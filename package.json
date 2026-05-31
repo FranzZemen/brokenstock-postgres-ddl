@@ -1,0 +1,48 @@
+{
+  "name": "@franzzemen/brokenstock-postgres-ddl",
+  "version": "0.0.1",
+  "description": "Canonical home of all Brokenstock-specific Postgres schema migrations across Eras",
+  "homepage": "https://github.com/FranzZemen/brokenstock-postgres-ddl#readme",
+  "bugs": {
+    "url": "https://github.com/FranzZemen/brokenstock-postgres-ddl/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FranzZemen/brokenstock-postgres-ddl.git"
+  },
+  "license": "UNLICENSED",
+  "author": "Franz Zemen",
+  "type": "module",
+  "files": [
+    "out/",
+    "migrations/",
+    "config.json.encrypt"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@franzzemen/build-system": "^34.0.0",
+    "@franzzemen/safe-config": "^5.1.32"
+  },
+  "exports": {
+    ".": {
+      "types": "./out/project/types/index.d.ts",
+      "import": "./out/project/index.js"
+    }
+  },
+  "imports": {
+    "#project": {
+      "types": "./out/project/types/project-index.d.ts",
+      "import": "./out/project/project-index.js"
+    }
+  },
+  "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.9.1",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.6",
+    "typescript": "^6.0.3"
+  }
+}
