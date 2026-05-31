@@ -7,7 +7,9 @@
  * bump MIN_SCHEMA_VERSION accordingly.
  */
 
-exports.up = (pgm) => {
+import type {MigrationBuilder} from 'node-pg-migrate';
+
+export const up = (pgm: MigrationBuilder): void => {
   pgm.createTable('smoke_events', {
     id: {type: 'serial', primaryKey: true},
     payload: {type: 'text', notNull: true},
@@ -15,6 +17,6 @@ exports.up = (pgm) => {
   });
 };
 
-exports.down = (pgm) => {
+export const down = (pgm: MigrationBuilder): void => {
   pgm.dropTable('smoke_events');
 };

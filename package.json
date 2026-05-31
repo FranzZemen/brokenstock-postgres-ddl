@@ -13,11 +13,6 @@
   "license": "UNLICENSED",
   "author": "Franz Zemen",
   "type": "module",
-  "files": [
-    "out/",
-    "migrations/",
-    "config.json.encrypt"
-  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -41,8 +36,10 @@
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.9.1",
+    "@types/pg": "^8.20.0",
     "chai": "^6.2.2",
     "mocha": "^11.7.6",
+    "node-pg-migrate": "^8.0.4",
     "typescript": "^6.0.3"
   }
 }

@@ -19,7 +19,9 @@
  *     pending-poll cheap as the table grows.
  */
 
-exports.up = (pgm) => {
+import type {MigrationBuilder} from 'node-pg-migrate';
+
+export const up = (pgm: MigrationBuilder): void => {
   pgm.createTable('worker_jobs', {
     id: {type: 'bigserial', primaryKey: true},
     channel: {type: 'text', notNull: true},
@@ -39,6 +41,6 @@ exports.up = (pgm) => {
   });
 };
 
-exports.down = (pgm) => {
+export const down = (pgm: MigrationBuilder): void => {
   pgm.dropTable('worker_jobs');
 };

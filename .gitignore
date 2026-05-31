@@ -5,3 +5,4 @@ out
 /project-init-undo.txt
 config.json
 config.json.decrypt
+config.json.encrypt
