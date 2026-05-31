@@ -24,6 +24,10 @@
     ".": {
       "types": "./out/project/types/index.d.ts",
       "import": "./out/project/index.js"
+    },
+    "./schema-types": {
+      "types": "./out/project/types/schema-types/index.d.ts",
+      "import": "./out/project/schema-types/index.js"
     }
   },
   "imports": {
@@ -38,6 +42,7 @@
     "@types/node": "^25.9.1",
     "@types/pg": "^8.20.0",
     "chai": "^6.2.2",
+    "kysely": "^0.29.2",
     "mocha": "^11.7.6",
     "node-pg-migrate": "^8.0.4",
     "typescript": "^6.0.3"

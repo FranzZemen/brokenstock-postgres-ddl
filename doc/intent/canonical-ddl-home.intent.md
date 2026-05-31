@@ -1,6 +1,6 @@
 # Intent: Canonical DDL Home
 
-**Status:** Active (since Pre-Era-1.6, 2026-05-30; amended Pre-Era-1.7, 2026-05-31)
+**Status:** Active (since Pre-Era-1.6, 2026-05-30; amended Pre-Era-1.7, 2026-05-31; S3-transport decoupling 2026-05-31)
 **Parent PRDs:**
 - `~/dev/projects/doc/prd/pre-era-1.6-centralize-ddl-and-foundation-cleanup.prd.md`
 - `~/dev/projects/doc/prd/pre-era-1.7-secrets-loader-and-migration-shape.prd.md`
@@ -122,15 +122,75 @@ everything not gitignored; the practical effect is `out/project/index.js` plus
 tarball (paths didn't exist relative to where `npm publish` was invoked); the
 no-`files:` pattern matches `postgres-app` and removes the failure mode.
 
-## Consumption path (Pre-Era-1.7 D5 — Shape A)
+## Consumption path (S3-transport decoupling, 2026-05-31)
 
-One consumer reads this package: the worker chain, transitively via
-`@franzzemen/brokenstock-worker-template`'s `dependencies`. On the deployed
-host the package appears at
-`/opt/brokenstock/current/node_modules/@franzzemen/brokenstock-postgres-ddl/`,
-and `abs.migrate`'s SSM Document invokes `pg-app.migrate` against it from
-there.
+As of `@franzzemen/aws-build-system` 0.3.8, this package is consumed via
+S3, not via the worker artifact's `node_modules/` closure. This is the
+Shape B path (a standalone DDL tarball deployed independently of worker
+artifacts) — pulled forward from Beta Era because Pre-Era-1.7 already
+needed it to land schema changes without rebuilding worker-template every
+time a migration drops.
 
-Shape B (a standalone DDL tarball deployed independently of worker artifacts)
-is deferred to Beta Era; revisit when migrations need to land without a worker
-deploy cycle.
+### Migration mechanics
+
+DDL releases use a two-step publish:
+
+1. **`bs.publish`** in this repo — publishes to npm. Paper trail only;
+   npm is not on the migration hot path.
+2. **`abs.ddl-publish <env>`** — `npm pack`s the built `out/project/`
+   tree, uploads the tarball to
+   `s3://brokenstock-<env>-deploys/<pkg>/<ver>/<pkg>-<ver>.tgz`, and
+   writes a plain-text `latest` pointer object at
+   `s3://brokenstock-<env>-deploys/<pkg>/latest` whose body is the
+   semver string. Same bucket and IAM model as `abs.publish`.
+
+`abs.migrate <env> <role> <ver> [--ddl-version <semver>]` then dispatches
+the `BrokenstockMigrate-<env>` SSM Document. The worker host:
+
+1. Resolves `--ddl-version` (default `latest`) by reading the S3 `latest`
+   pointer.
+2. Downloads the corresponding tarball into a per-invocation scratch
+   directory and extracts it.
+3. Invokes `$CURRENT/node_modules/.bin/pg-app.migrate <role>
+   --migrations-dir=<scratch>/package/migrations [--direction ...]
+   [--count ...]`.
+4. Discards the scratch directory after the run.
+
+No npm install on the host. The worker artifact's bundled `pg-app.migrate`
+must be **≥ postgres-app 1.1.9** (the version that introduced
+`--migrations-dir`); older worker artifacts cannot consume DDL via this
+path and must be redeployed before migrations can land.
+
+The prior Shape A path — `cd
+$CURRENT/node_modules/@franzzemen/brokenstock-postgres-ddl/` and discover
+migrations via `--migrations-package` — is retired. Worker-template no
+longer needs this package in its dependency closure for the migration
+path to work; transitive dependencies remain only insofar as other code
+(e.g., MIN_SCHEMA_VERSION verification at consumer boot) still resolves
+`migrationsDir` from the npm-installed copy.
+
+### `pg_cron` extension prerequisite (prod_blue only)
+
+The C4 sessions migration uses `pg_cron` for scheduled cleanup of expired
+session rows. `pg_cron` is an Aurora-managed extension that must be enabled
+at the **cluster master** level — `CREATE EXTENSION pg_cron;` cannot run
+inside a node-pg-migrate transaction against a non-master node, and the
+extension itself must be added to the cluster's parameter group's
+`shared_preload_libraries`.
+
+For Pre-Era-1.7, this is handled out-of-band on prod_blue only:
+
+1. Operator (or admin lambda, where applicable) connects to the Aurora
+   prod_blue cluster master as a sufficiently-privileged role.
+2. Runs `CREATE EXTENSION pg_cron;` once. This is idempotent against an
+   already-installed extension.
+3. The C4 sessions migration then runs normally via `abs.migrate`.
+
+The sessions migration **self-skips on non-prod_blue databases** — the
+cron-scheduling SQL is guarded by a check on `current_database()` so that
+running migrations against scratch DBs, integration-test DBs, or future
+non-prod_blue prod databases does not fail on a missing extension.
+
+Future CDK-managed automation of the `CREATE EXTENSION pg_cron` step (plus
+the parameter-group `shared_preload_libraries` change) is a Pre-Era-2.x
+consideration; tracked alongside other cluster-bootstrap automation.
