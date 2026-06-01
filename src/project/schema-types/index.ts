@@ -176,6 +176,149 @@ export interface WorkerJobsTable {
 }
 
 // ---------------------------------------------------------------------------
+// Era 2 C1 — reference data (securities, aliases, splits, calendar, prices).
+// Six logical entities, eight physical tables after deviations A + B.
+// ---------------------------------------------------------------------------
+
+export interface SecuritiesTable {
+  /** `mic:ticker` composite string PK (e.g. 'XNAS:AAPL'). CHECK-constrained. */
+  key: string;
+  mic: string;
+  exchange: string;
+  ticker: string;
+  asset_class: string;
+  currency: string;
+  description: string | null;
+  country_code: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface SecurityAliasesTable {
+  alias_type: string;
+  alias: string;
+  /** securities.key FK RESTRICT. */
+  security_key: string;
+  ignored: boolean | null;
+  unlisted: boolean | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface StockSplitsTable {
+  /** securities.key FK CASCADE. */
+  security_key: string;
+  effective_date: Date;
+  ticker: string;
+  split_factor: number;
+  split_to: number | null;
+  split_from: number | null;
+  historical_adjustment_factor: number | null;
+  adjustment_type: string;
+  vendor_name: string;
+  applied_at: Date | null;
+  txn_count: number | null;
+  vendor_corrected_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export type StockSplitsCoverageStatus = 'ready' | 'pending' | 'failed';
+
+export interface StockSplitsCoverageTable {
+  /** securities.key FK CASCADE. PK (one row per security). */
+  security_key: string;
+  status: StockSplitsCoverageStatus;
+  applied_through_date: Date | null;
+  last_attempt_at: Date | null;
+  last_error: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface MarketCalendarTable {
+  mic: string;
+  year: number;
+  refreshed_at: Date;
+  source: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface MarketCalendarHolidaysTable {
+  mic: string;
+  holiday_date: Date;
+  name: string;
+  /** PostgreSQL TIME; string at the kysely boundary. */
+  early_close: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface PricesEquityTable {
+  /** securities.key FK CASCADE. */
+  security_key: string;
+  closing_date: Date;
+  high: number;
+  low: number;
+  open: number;
+  close: number;
+  volume: bigint | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export type OptionCallPut = 'call' | 'put';
+
+export interface PricesOptionsTable {
+  /** securities.key FK CASCADE (underlying). */
+  security_key: string;
+  expiration_date: Date;
+  strike: number;
+  call_put: OptionCallPut;
+  closing_date: Date;
+  /** OCC canonical identifier (e.g. 'AAPL240419C00150000'). UNIQUE. */
+  cid: string;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume: bigint | null;
+  transactions: number | null;
+  last: number | null;
+  mark: number | null;
+  bid: number | null;
+  bid_size: number | null;
+  ask: number | null;
+  ask_size: number | null;
+  open_interest: number | null;
+  implied_volatility: number | null;
+  delta: number | null;
+  gamma: number | null;
+  theta: number | null;
+  vega: number | null;
+  rho: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // Database — pass as the kysely generic.
 // ---------------------------------------------------------------------------
 
@@ -186,6 +329,14 @@ export interface Database {
   user_applications: UserApplicationsTable;
   sessions: SessionsTable;
   role_capabilities: RoleCapabilitiesTable;
+  securities: SecuritiesTable;
+  security_aliases: SecurityAliasesTable;
+  stock_splits: StockSplitsTable;
+  stock_splits_coverage: StockSplitsCoverageTable;
+  market_calendar: MarketCalendarTable;
+  market_calendar_holidays: MarketCalendarHolidaysTable;
+  prices_equity: PricesEquityTable;
+  prices_options: PricesOptionsTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
 }
