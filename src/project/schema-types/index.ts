@@ -288,6 +288,9 @@ export interface MarketIdentifierCodeMappingsTable {
   mic: string;
   alt_code: string;
   country_code: string | null;
+  source: string | null;
+  country: string | null;
+  timezone: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
