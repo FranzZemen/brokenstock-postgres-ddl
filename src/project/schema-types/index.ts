@@ -366,4 +366,44 @@ export interface Database {
   market_identifier_code_mappings: MarketIdentifierCodeMappingsTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
+  vendor_sync_jobs: VendorSyncJobsTable;
+}
+
+// ---------------------------------------------------------------------------
+// vendor_sync_jobs — Era 2 C4 queue table for vendor-sync-worker.
+// ---------------------------------------------------------------------------
+
+/** 4-state job lifecycle. */
+export type VendorSyncJobStatus = 'queued' | 'in_progress' | 'completed' | 'failed';
+
+/** The 6 in-scope vendor feeds (C4 D3). */
+export type VendorSyncFeedType =
+  | 'equity-prices'
+  | 'options-prices'
+  | 'stock-splits-fetch'
+  | 'market-calendar'
+  | 'ticker-info'
+  | 'ticker-ratios';
+
+export interface VendorSyncJobsTable {
+  /** uuid4 string PK. */
+  job_id: string;
+  feed_type: VendorSyncFeedType;
+  /** Trading-date / refresh-date the job covers. */
+  scheduled_for_date: Date;
+  /** Free-form per-feed metadata (e.g. ticker list). */
+  payload: unknown;
+  status: Generated<VendorSyncJobStatus>;
+  attempts: Generated<number>;
+  next_attempt_at: Generated<Date>;
+  last_error: string | null;
+  enqueued_at: Generated<Date>;
+  started_at: Date | null;
+  completed_at: Date | null;
+  /** EC2 IMDS instance-id of the worker that claimed the job. */
+  worker_instance_id: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
 }
