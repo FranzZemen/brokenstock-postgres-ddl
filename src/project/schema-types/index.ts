@@ -345,6 +345,87 @@ export interface PricesOptionsTable {
 }
 
 // ---------------------------------------------------------------------------
+// Era 2 ticker-data (super-PRD v0.4.0) — DDB TICKER_DATA (PK ticker, SK
+// COMPANY_INFO|RATIOS) normalized into two PK-only tables. Faithful typed
+// columns from CompanyInfo / Ratios; every number → DOUBLE PRECISION.
+// ---------------------------------------------------------------------------
+
+export interface TickerDataCompanyInfoTable {
+  ticker: string;
+  symbol: string;
+  name: string;
+  primary_exchange: string;
+  active: boolean;
+  /** CHECK: stocks | crypto | fx | otc | indices. */
+  market: string;
+  description: string | null;
+  type: string | null;
+  /** CHECK (when present): us | global. */
+  locale: string | null;
+  currency: string | null;
+  cik: string | null;
+  composite_figi: string | null;
+  share_class_figi: string | null;
+  sic_code: string | null;
+  sic_description: string | null;
+  industry: string | null;
+  total_employees: number | null;
+  list_date: Date | null;
+  market_cap: number | null;
+  shares_outstanding: number | null;
+  weighted_shares_outstanding: number | null;
+  round_lot: number | null;
+  ceo: string | null;
+  fiscal_year_end: string | null;
+  homepage_url: string | null;
+  phone_number: string | null;
+  address_line1: string | null;
+  address_city: string | null;
+  address_state: string | null;
+  address_postal_code: string | null;
+  icon_url: string | null;
+  logo_url: string | null;
+  ticker_root: string | null;
+  ticker_suffix: string | null;
+  delisted_utc: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface TickerDataRatiosTable {
+  ticker: string;
+  symbol: string;
+  cik: string | null;
+  as_of_date: Date;
+  close_price: number;
+  average_volume: number | null;
+  market_cap: number | null;
+  enterprise_value: number | null;
+  earnings_per_share: number | null;
+  price_to_earnings: number | null;
+  price_to_book: number | null;
+  price_to_sales: number | null;
+  price_to_cash_flow: number | null;
+  price_to_free_cash_flow: number | null;
+  ev_to_sales: number | null;
+  ev_to_ebitda: number | null;
+  return_on_assets: number | null;
+  return_on_equity: number | null;
+  current_ratio: number | null;
+  quick_ratio: number | null;
+  cash_ratio: number | null;
+  debt_to_equity: number | null;
+  dividend_yield: number | null;
+  free_cash_flow: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // Database — pass as the kysely generic.
 // ---------------------------------------------------------------------------
 
@@ -364,6 +445,8 @@ export interface Database {
   prices_equity: PricesEquityTable;
   prices_options: PricesOptionsTable;
   market_identifier_code_mappings: MarketIdentifierCodeMappingsTable;
+  ticker_data_company_info: TickerDataCompanyInfoTable;
+  ticker_data_ratios: TickerDataRatiosTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
   vendor_sync_jobs: VendorSyncJobsTable;
