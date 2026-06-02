@@ -284,6 +284,16 @@ export interface PricesEquityTable {
 
 export type OptionCallPut = 'call' | 'put';
 
+export interface MarketIdentifierCodeMappingsTable {
+  mic: string;
+  alt_code: string;
+  country_code: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
 export interface PricesOptionsTable {
   /** securities.key FK CASCADE (underlying). */
   security_key: string;
@@ -337,6 +347,7 @@ export interface Database {
   market_calendar_holidays: MarketCalendarHolidaysTable;
   prices_equity: PricesEquityTable;
   prices_options: PricesOptionsTable;
+  market_identifier_code_mappings: MarketIdentifierCodeMappingsTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
 }
