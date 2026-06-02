@@ -234,9 +234,22 @@ export type StockSplitsCoverageStatus = 'ready' | 'pending' | 'failed';
 export interface StockSplitsCoverageTable {
   /** securities.key FK CASCADE. PK (one row per security). */
   security_key: string;
-  status: StockSplitsCoverageStatus;
+  /** Earliest vendor-fetch date (DDB parity). Nullable until first successful fetch. */
+  earliest_coverage_date: Date | null;
+  /** Latest vendor-fetch date (DDB parity). Nullable until first successful fetch. */
+  latest_coverage_date: Date | null;
+  /** Vendor identifier for the source of this coverage (DDB parity, e.g. 'massive'). */
+  coverage_source: string | null;
+  /**
+   * Vendor-fetch state. NULL = treat as 'ready' per DDB legacy semantics
+   * (rows pre-dating the field). API layer projects null → 'ready'.
+   */
+  coverage_status: StockSplitsCoverageStatus | null;
+  /** Worker progress marker — latest effective_date applied across transactions. */
   applied_through_date: Date | null;
+  /** Last failed-fetch timestamp (post-DDB addition for ops visibility). */
   last_attempt_at: Date | null;
+  /** Last failed-fetch error (post-DDB addition for ops visibility). */
   last_error: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
