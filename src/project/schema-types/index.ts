@@ -450,6 +450,9 @@ export interface Database {
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
   vendor_sync_jobs: VendorSyncJobsTable;
+  job: JobTable;
+  job_chunk: JobChunkTable;
+  queue: QueueTable;
 }
 
 // ---------------------------------------------------------------------------
@@ -489,4 +492,94 @@ export interface VendorSyncJobsTable {
   updated_at: Generated<Date>;
   created_by: string;
   updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
+// Era 3 C1 — pg-queue / pg-chunked-jobs substrate (job, job_chunk, queue).
+// Generic batch substrate; see era-3-c01-substrate-pg-queue-and-chunked-jobs
+// .prd.md (RD-1…RD-21). BIGINT identity PKs surface as `string` through the
+// kysely PostgresDialect (node-pg returns bigint as string to avoid precision
+// loss); FK columns referencing them are typed `string`.
+// ---------------------------------------------------------------------------
+
+/** Parent job lifecycle (RD-6). */
+export type JobStatus =
+  | 'planning'
+  | 'running'
+  | 'finalizing'
+  | 'completed'
+  | 'completed_with_errors'
+  | 'failed'
+  | 'canceled';
+
+/** Queue-row lifecycle for chunks + generic queue rows (RD-9): failed=poison, dead=exhausted. */
+export type QueueRowStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'dead';
+
+/** Work chunk vs the separate finalize chunk-of-one (RD-5). */
+export type JobChunkKind = 'work' | 'finalize';
+
+export interface JobTable {
+  job_id: Generated<string>;
+  job_type: string;
+  owner: string | null;
+  /** Single-flight chaining key (RD-13); NULL = unconstrained. */
+  partition_key: string | null;
+  status: Generated<JobStatus>;
+  /** Counters track kind='work' chunks only (RD-5) → O(1) progress. */
+  chunk_total: Generated<number>;
+  chunk_completed: Generated<number>;
+  chunk_failed: Generated<number>;
+  payload: unknown;
+  result: unknown;
+  error: string | null;
+  /** UNIQUE; NULL = no dedupe (RD-8). */
+  idempotency_key: string | null;
+  submitted_at: Generated<Date>;
+  started_at: Date | null;
+  finalized_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface JobChunkTable {
+  chunk_id: Generated<string>;
+  /** FK → job.job_id. */
+  job_id: string;
+  /** Denormalized from job for single-table claim (no join). */
+  job_type: string;
+  kind: Generated<JobChunkKind>;
+  chunk_ordinal: number;
+  /** Opaque partition identity; substrate never parses it (RD-15). */
+  partition: string;
+  status: Generated<QueueRowStatus>;
+  attempts: Generated<number>;
+  max_attempts: Generated<number>;
+  /** Backoff gate (RD-21). */
+  next_attempt_at: Generated<Date>;
+  /** Lease owner (NULL when free). */
+  locked_by: string | null;
+  /** Lease gate: reclaim when locked_at + lease(job_type) < now() (RD-4/RD-21). */
+  locked_at: Date | null;
+  payload: unknown;
+  result: unknown;
+  last_error: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+/** Generic single-shot queue row (RD-9) — conforms to the same queue-row contract. */
+export interface QueueTable {
+  queue_id: Generated<string>;
+  queue_name: string;
+  status: Generated<QueueRowStatus>;
+  attempts: Generated<number>;
+  max_attempts: Generated<number>;
+  next_attempt_at: Generated<Date>;
+  locked_by: string | null;
+  locked_at: Date | null;
+  payload: unknown;
+  result: unknown;
+  last_error: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
 }
