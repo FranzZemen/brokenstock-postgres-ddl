@@ -453,6 +453,11 @@ export interface Database {
   job: JobTable;
   job_chunk: JobChunkTable;
   queue: QueueTable;
+  brokerage_accounts: BrokerageAccountsTable;
+  brokerage_file_imports: BrokerageFileImportsTable;
+  brokerage_records: BrokerageRecordsTable;
+  brokerage_imports: BrokerageImportsTable;
+  cash_entry: CashEntryTable;
 }
 
 // ---------------------------------------------------------------------------
@@ -582,4 +587,192 @@ export interface QueueTable {
   last_error: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
+}
+
+// ---------------------------------------------------------------------------
+// Era 3 C3 — provenance (brokerage_accounts, brokerage_file_imports,
+// brokerage_records, brokerage_imports, cash_entry). See
+// era-3-c03-provenance.prd.md (CD-1…CD-9 + D6/D7/D10/D12). Surrogate UUID PKs
+// (D6) surface as `string` through the kysely PostgresDialect; FK columns
+// referencing them (and securities.key TEXT) are typed `string`. JSONB →
+// `unknown`; TIMESTAMPTZ/DATE → `Date`; the 7 metrics columns are NUMERIC →
+// `number`. Enum CHECKs mirrored as TS unions below.
+// ---------------------------------------------------------------------------
+
+/** financial-identity brokerage.ts:6 — the 4 brokerages. */
+export type Brokerage = 'Unknown' | 'Fidelity' | 'IBKR' | 'Schwab';
+
+/** financial-identity imports/file-import.ts:20-37 — file-import lifecycle (17 vals). */
+export type FileImportStatus =
+  | 'none'
+  | 'imported'
+  | 'pending split multiple accounts decision'
+  | 'ready for parsing'
+  | 'parsing'
+  | 'pending instrument identification'
+  | 'ready for processing'
+  | 'adjusting for stock splits'
+  | 'processing'
+  | 'processed'
+  | 'matched'
+  | 'failed'
+  | 'unprocessing'
+  | 'deleting'
+  | 'retrying'
+  | 'pending duplicate records decision'
+  | 'calculating-dependencies'
+  | 'complete';
+
+/** financial-identity imports/parser-name.ts:6 — the 6 parsers. */
+export type ParserName =
+  | 'Standard JSON History Parser'
+  | 'Fidelity CSV Parser'
+  | 'Fidelity Multiple Account CSV Parser'
+  | 'Fidelity Retirement Parser'
+  | 'IBKR XML Flex Query Parser'
+  | 'Schwab Think Or Swim CSV Parser';
+
+/** financial-identity imports/brokerage-record.ts:13-18 — record lifecycle (5 vals). */
+export type BrokerageRecordStatus =
+  | 'processed'
+  | 'deleted'
+  | 'ignored'
+  | 'unprocessed'
+  | 'pending-split-resolution';
+
+export interface BrokerageAccountsTable {
+  /** Surrogate UUID PK (D6). */
+  account_id: Generated<string>;
+  /** users.uuid (denormalized owner). */
+  owner: string;
+  brokerage: Brokerage;
+  account: string;
+  nickname: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface BrokerageFileImportsTable {
+  /** Surrogate UUID PK (D6). */
+  file_import_id: Generated<string>;
+  /** Denormalized owner (CD-2). */
+  owner: string;
+  /** brokerage_accounts.account_id FK. */
+  account_id: string;
+  filename: string;
+  original_filename: string | null;
+  brokerage_account_filename: string;
+  split: boolean | null;
+  /** importDateEpoch → TIMESTAMPTZ (CD-4). */
+  import_date: Date | null;
+  status: FileImportStatus | null;
+  status_text: string | null;
+  parser_name: ParserName | null;
+  /** Datestamp → DATE (CD-4). */
+  earliest_transaction: Date | null;
+  /** Datestamp → DATE (CD-4). */
+  latest_transaction: Date | null;
+  /** Datestamp → DATE (CD-4). */
+  exported_date: Date | null;
+  /** FileImportHistory[] → JSONB (CD-5). */
+  history: unknown;
+  /** retryAfterEpoch → TIMESTAMPTZ (CD-4). */
+  retry_after: Date | null;
+  pause_source: string | null;
+  pre_calculate_dependencies: boolean | null;
+  hash: string;
+  /** BIGINT → string at the kysely boundary. */
+  length: string;
+  /** FileImportMetrics.totalTx (CD-5). */
+  metric_total_tx: number | null;
+  /** FileImportMetrics.parserDroppedCount (CD-5). */
+  metric_parser_dropped_count: number | null;
+  /** FileImportMetrics.splitDroppedCount (CD-5). */
+  metric_split_dropped_count: number | null;
+  /** FileImportMetrics.nearMissCount (CD-5). */
+  metric_near_miss_count: number | null;
+  /** FileImportMetrics.aliasIgnoredTx (CD-5). */
+  metric_alias_ignored_tx: number | null;
+  /** FileImportMetrics.remappedTx (CD-5). */
+  metric_remapped_tx: number | null;
+  /** FileImportMetrics.unlistedTx (CD-5). */
+  metric_unlisted_tx: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface BrokerageRecordsTable {
+  /** Surrogate UUID PK (D6). */
+  record_id: Generated<string>;
+  /** Denormalized owner (CD-2). */
+  owner: string;
+  /** brokerage_accounts.account_id FK. */
+  account_id: string;
+  /** brokerage_file_imports.file_import_id FK (NOT NULL). */
+  file_import_id: string;
+  /** securities.key (TEXT) FK; set during reconcile (D12/CD-6), nullable. */
+  security_key: string | null;
+  status: BrokerageRecordStatus;
+  filename: string | null;
+  brokerage_unique_identifier: string | null;
+  hash: string | null;
+  ignored_by: string | null;
+  ignored_at: Date | null;
+  resolved_at: Date | null;
+  resolution_diagnostic: string | null;
+  /** Open generic IMPORT_RECORD broker payload → JSONB (D7). */
+  payload: unknown;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface BrokerageImportsTable {
+  /** Surrogate UUID PK (D6). */
+  import_id: Generated<string>;
+  /** Denormalized owner (CD-2). */
+  owner: string;
+  /** brokerage_accounts.account_id FK. */
+  account_id: string;
+  /** brokerage_file_imports.file_import_id FK. */
+  file_import_id: string | null;
+  filename: string | null;
+  brokerage_account_filename: string;
+  /** importDateEpoch → TIMESTAMPTZ (CD-4). */
+  import_date: Date | null;
+  records_count: number | null;
+  records_hash: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface CashEntryTable {
+  /** Surrogate UUID PK (D6). */
+  cash_entry_id: Generated<string>;
+  /** Denormalized owner (CD-2). */
+  owner: string;
+  /** brokerage_accounts.account_id FK. */
+  account_id: string;
+  /** brokerage_file_imports.file_import_id FK. */
+  file_import_id: string | null;
+  symbol: string | null;
+  amount: number | null;
+  fees: number | null;
+  commission: number | null;
+  /** transactionEpoch → TIMESTAMPTZ (CD-4). */
+  transaction_date: Date | null;
+  description: string | null;
+  origin_name: string | null;
+  // NOTE: transaction_id FK is added in C4 (CD-8 / D10), not here.
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
 }
