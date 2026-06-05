@@ -641,8 +641,8 @@ export type BrokerageRecordStatus =
   | 'pending-split-resolution';
 
 export interface BrokerageAccountsTable {
-  /** Surrogate UUID PK (D6). */
-  account_id: Generated<string>;
+  /** App-minted branded PK `<uuid>.account` (getBrokerageAccountUUID). */
+  account_id: string;
   /** users.uuid (denormalized owner). */
   owner: string;
   brokerage: Brokerage;
@@ -655,8 +655,8 @@ export interface BrokerageAccountsTable {
 }
 
 export interface BrokerageFileImportsTable {
-  /** Surrogate UUID PK (D6). */
-  file_import_id: Generated<string>;
+  /** App-minted branded PK `<uuid>.file-import` (getFileImportUUID). */
+  file_import_id: string;
   /** Denormalized owner (CD-2). */
   owner: string;
   /** brokerage_accounts.account_id FK. */
@@ -706,8 +706,8 @@ export interface BrokerageFileImportsTable {
 }
 
 export interface BrokerageRecordsTable {
-  /** Surrogate UUID PK (D6). */
-  record_id: Generated<string>;
+  /** App-minted branded PK `<uuid>.record` (getBrokerageRecordUUID). */
+  record_id: string;
   /** Denormalized owner (CD-2). */
   owner: string;
   /** brokerage_accounts.account_id FK. */
@@ -733,8 +733,8 @@ export interface BrokerageRecordsTable {
 }
 
 export interface BrokerageImportsTable {
-  /** Surrogate UUID PK (D6). */
-  import_id: Generated<string>;
+  /** App-minted branded PK `<uuid>.import` (getBrokerageImportUUID). */
+  import_id: string;
   /** Denormalized owner (CD-2). */
   owner: string;
   /** brokerage_accounts.account_id FK. */
@@ -754,8 +754,8 @@ export interface BrokerageImportsTable {
 }
 
 export interface CashEntryTable {
-  /** Surrogate UUID PK (D6). */
-  cash_entry_id: Generated<string>;
+  /** App-minted branded PK `<uuid>.cash-entry` (getCashEntryUUID). */
+  cash_entry_id: string;
   /** Denormalized owner (CD-2). */
   owner: string;
   /** brokerage_accounts.account_id FK. */
