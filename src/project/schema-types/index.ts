@@ -459,6 +459,9 @@ export interface Database {
   brokerage_imports: BrokerageImportsTable;
   cash_entry: CashEntryTable;
   transactions: TransactionsTable;
+  trades: TradesTable;
+  sub_trades: SubTradesTable;
+  trade_journal_entries: TradeJournalEntriesTable;
 }
 
 // ---------------------------------------------------------------------------
@@ -832,10 +835,97 @@ export interface TransactionsTable {
   origin_transfer_event_id: string | null;
   brokerage_unique_identifier: string | null;
   transfer_counterparty_hint: string | null;
-  /** Trade membership (D8) — written by the trades domain (#6); FK deferred. */
+  /** Trade membership (D8) — written by the trades domain (#6). Real FK →
+   *  trades(trade_id) ON DELETE RESTRICT added in node #6 (C5). */
   trade_id: string | null;
   sub_trade_ndx: number | null;
   ordinal_position: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
+// trades / sub_trades / trade_journal_entries — Era 3 C5 (node #6, D8).
+// Refactors @franzzemen/trades off DDB. See era-3-c05-trades.prd.md.
+// D8: trade↔transaction membership lives on `transactions`
+// (trade_id/sub_trade_ndx/ordinal_position); trade_transaction_refs +
+// sub_trade.transactionUuids[] are dropped (no PG table). trade_origins is also
+// dropped (TR-1 — derived from transactions.origin_name).
+// ---------------------------------------------------------------------------
+
+export interface TradesTable {
+  /** App-minted PK `<uuid>.trade` (financial-identity getTradeUUID). */
+  trade_id: string;
+  /** Denormalized owner `<uuid>.user`. */
+  owner: string;
+  /** brokerage_accounts.account_id FK. */
+  account_id: string;
+  /** Denormalized for query speed (TR-3). */
+  brokerage: Brokerage;
+  account: string;
+  /** getSymbolPartition(getAccountPartition(brokerage,account), symbol). */
+  symbol_partition: string;
+  symbol: string;
+  /** securityKey — plain TEXT, NO securities FK (TR-4 / DEV-T6). */
+  security_key: string;
+  /** 'Open' | 'Closed' | 'Open Imbalance' (CHECK). */
+  status: string;
+  sealed: Generated<boolean>;
+  /** TR-2 — BIGINT, keeps MIN/MAX_SAFE_INTEGER sentinels (reads back as string;
+   *  Number() at the boundary). NOT timestamptz. */
+  opened_epoch: string;
+  closed_epoch: string;
+  /** NUMERIC — reads back as string; Number() at the boundary (TR-7). */
+  open_positions: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface SubTradesTable {
+  /** App-minted PK `<uuid>.sub-trade` (financial-identity getSubTradeUUID). */
+  sub_trade_id: string;
+  /** trades.trade_id FK (ON DELETE CASCADE — sub-trades are owned). */
+  trade_id: string;
+  owner: string;
+  account_id: string;
+  /** Denormalized (TR-3). */
+  brokerage: Brokerage;
+  account: string;
+  /** Sub-trade index within the trade; UNIQUE(trade_id, ndx). */
+  ndx: number;
+  /** SubTradePartition `${string}:${SecurityType}`. */
+  partition: string;
+  symbol: string;
+  security_key: string;
+  security_type: string;
+  status: string;
+  /** TR-2 — BIGINT sentinels; string on read. */
+  opened_epoch: string;
+  closed_epoch: string;
+  /** NUMERIC; string on read. */
+  open_positions: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface TradeJournalEntriesTable {
+  /** App-minted PK `<uuid>.trade-journal-entry` (getTradeJournalEntryUUID). */
+  journal_entry_id: string;
+  /** transactions.transaction_id FK (ON DELETE CASCADE). */
+  transaction_id: string;
+  owner: string;
+  title: string;
+  /** ISO Timestamp string, stored verbatim (TR-6). */
+  timestamp: string;
+  /** BIGINT, immutable; string on read (TR-6). */
+  timestamp_epoch: string;
+  journal_entry: string;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
