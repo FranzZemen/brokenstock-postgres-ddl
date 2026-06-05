@@ -458,6 +458,7 @@ export interface Database {
   brokerage_records: BrokerageRecordsTable;
   brokerage_imports: BrokerageImportsTable;
   cash_entry: CashEntryTable;
+  transactions: TransactionsTable;
 }
 
 // ---------------------------------------------------------------------------
@@ -772,7 +773,69 @@ export interface CashEntryTable {
   transaction_date: Date | null;
   description: string | null;
   origin_name: string | null;
-  // NOTE: transaction_id FK is added in C4 (CD-8 / D10), not here.
+  /** transactions.transaction_id FK (D10; added C4 2026-06-05). */
+  transaction_id: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
+// Era 3 C4 — transactions (the hinge). See era-3-c04-transactions.prd.md.
+// ---------------------------------------------------------------------------
+export interface TransactionsTable {
+  /** App-minted PK `<uuid>.transaction` (financial-identity getTransactionUUID). */
+  transaction_id: string;
+  /** Denormalized owner `<uuid>.user`. */
+  owner: string;
+  /** brokerage_accounts.account_id FK. */
+  account_id: string;
+  /** Denormalized for query speed (T-d). */
+  brokerage: Brokerage;
+  account: string;
+  /** transactionEpoch → TIMESTAMPTZ. */
+  transaction_date: Date;
+  /** tradingDate → DATE (travels as 'YYYY-MM-DD' string via the parser pin). */
+  trading_date: string;
+  /** paidTransactionEpoch → TIMESTAMPTZ. */
+  paid_transaction_date: Date | null;
+  /** lastSplitDate → DATE. */
+  last_split_date: string;
+  /** securityKey — plain TEXT, NO securities FK (DEV-T6: Unknown:<TICKER> keys
+   *  intentionally absent from securities; app-validated). */
+  security_key: string;
+  alias_type: string;
+  mic: string;
+  symbol: string;
+  brokerage_alias: string;
+  underlying_symbol: string;
+  underlying_exchange: string | null;
+  country_code: string | null;
+  security_type: string;
+  action: string;
+  action_type: string;
+  /** NUMERIC — reads back as string; Number() at the boundary. */
+  quantity: string;
+  price: string;
+  parsed_quantity: string;
+  parsed_price: string;
+  commission: string;
+  fees: string;
+  amount: string;
+  currency: string;
+  origin: string;
+  origin_name: string;
+  /** brokerage_records.record_id FK (origin='import'); null otherwise (D9). */
+  origin_record_id: string | null;
+  /** transfer_events FK deferred to #7 — nullable column, no FK. */
+  origin_transfer_event_id: string | null;
+  brokerage_unique_identifier: string | null;
+  transfer_counterparty_hint: string | null;
+  /** Trade membership (D8) — written by the trades domain (#6); FK deferred. */
+  trade_id: string | null;
+  sub_trade_ndx: number | null;
+  ordinal_position: number | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
