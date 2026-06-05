@@ -706,7 +706,9 @@ export interface BrokerageFileImportsTable {
 }
 
 export interface BrokerageRecordsTable {
-  /** App-minted branded PK `<uuid>.record` (getBrokerageRecordUUID). */
+  /** App-minted brokerage-branded PK `<uuid>.<Brokerage>-brokerage-record`
+   *  (financial-identity BrokerageRecordUUID; format load-bearing for
+   *  transactions.origin_record_id). */
   record_id: string;
   /** Denormalized owner (CD-2). */
   owner: string;
