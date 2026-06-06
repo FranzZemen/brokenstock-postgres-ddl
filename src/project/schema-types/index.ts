@@ -462,6 +462,9 @@ export interface Database {
   trades: TradesTable;
   sub_trades: SubTradesTable;
   trade_journal_entries: TradeJournalEntriesTable;
+  transfer_pending: TransferPendingTable;
+  transfer_events: TransferEventsTable;
+  transfer_event_lots: TransferEventLotsTable;
 }
 
 // ---------------------------------------------------------------------------
@@ -926,6 +929,93 @@ export interface TradeJournalEntriesTable {
   /** BIGINT, immutable; string on read (TR-6). */
   timestamp_epoch: string;
   journal_entry: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
+// transfer_pending / transfer_events / transfer_event_lots — Era 3 C6 (node #7).
+// Refactors @franzzemen/intra-account-transfers (iteration-2 transfers) off DDB.
+// See era-3-c06-transfers.prd.md. The DDB single-table pk/sk + the event's
+// embedded lotPayload blob + syntheticTxUuids list are all dropped: modeled
+// relationally (lots → own rows; synthetics derived via
+// transactions.origin_transfer_event_id). Epochs → TIMESTAMPTZ (no sentinels).
+// ---------------------------------------------------------------------------
+
+export interface TransferPendingTable {
+  /** PK = the originating `transferred shares out/in` transaction (XF-2). FK → transactions. */
+  tx_uuid: string;
+  owner: string;
+  /** Broker account identifier string (DDB's misnamed `accountUuid` = tx.account). */
+  account: string;
+  /** brokerage_accounts.account_id FK (resolved). */
+  account_id: string;
+  broker: Brokerage;
+  security_key: string;
+  symbol: string;
+  mic: string;
+  /** 'OUT' | 'IN' (CHECK). */
+  direction: string;
+  /** txEpoch → TIMESTAMPTZ. */
+  tx_epoch: Date;
+  /** NUMERIC — string on read; Number() at the boundary. */
+  quantity: string;
+  counterparty_hint: string | null;
+  basis_from_statement: string | null;
+  /** awaiting-counterpart | insufficient-source-history | ambiguous-multiple-candidates (CHECK). */
+  match_blocked_reason: string | null;
+  origin_name: string | null;
+  last_match_attempt_at: Date | null;
+  /** Audit. `createdAt` (domain) is materialized from created_at (same instant). */
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface TransferEventsTable {
+  /** App-minted PK `<uuid>.transfer-event` (newTransferEventId). */
+  transfer_event_id: string;
+  owner: string;
+  broker: Brokerage;
+  security_key: string;
+  transfer_epoch: Date;
+  /** Sender account string / resolved FK — null on a no-counterpart in-only event. */
+  from_account: string | null;
+  from_account_id: string | null;
+  /** Receiver account string / resolved FK — null on a no-counterpart out-only event. */
+  to_account: string | null;
+  to_account_id: string | null;
+  /** Originating broker `transferred shares out`/`in` transactions (nullable). */
+  from_tx_uuid: string | null;
+  to_tx_uuid: string | null;
+  /** Parent event for chained A→B→C transfers (self-FK, SET NULL). */
+  lineage_parent_id: string | null;
+  /** 'matched' | 'no-counterpart-user-confirmed' (CHECK). */
+  resolution: string;
+  resolved_at: Date;
+  /** 'auto' (matcher) or an owner uuid (user-resolved) — plain TEXT, no actor CHECK. */
+  resolved_by: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface TransferEventLotsTable {
+  /** FK → transfer_events (ON DELETE CASCADE); composite PK with lot_ndx. */
+  transfer_event_id: string;
+  /** FIFO order within the event. */
+  lot_ndx: number;
+  owner: string;
+  /** NUMERIC — string on read. */
+  quantity: string;
+  basis_per_share: string;
+  original_acquisition_epoch: Date;
+  /** DATE — 'YYYY-MM-DD' via ::text read (off-by-one gotcha #1); null if absent. */
+  original_acquisition_date: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
