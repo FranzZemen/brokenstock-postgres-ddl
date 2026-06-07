@@ -465,6 +465,43 @@ export interface Database {
   transfer_pending: TransferPendingTable;
   transfer_events: TransferEventsTable;
   transfer_event_lots: TransferEventLotsTable;
+  thesis: ThesisTable;
+}
+
+/**
+ * thesis — @franzzemen/thesis DDB→PG (2026-06-07; standalone, not an Era).
+ * THESIS_SYMBOL_TABLE dropped (GIN on underlying_symbols replaces it); name-index
+ * LSI → (owner,name) btree. Narrative/template stay in S3.
+ */
+export interface ThesisTable {
+  /** App-minted branded ThesisUUID `<uuid>.thesis`. */
+  thesis_id: string;
+  /** Branded `<uuid>.user`. */
+  owner: string;
+  name: string;
+  thesis_summary: string;
+  underlying_symbols: Generated<string[]>;
+  /** timeWindow.startEpoch (timestamptz). */
+  time_window_start_epoch: Date | null;
+  /** timeWindow.endEpoch (timestamptz). */
+  time_window_end_epoch: Date | null;
+  accounts: string[] | null;
+  exclude_sealed: boolean | null;
+  narrative_s3_key: string | null;
+  publish_slug: string | null;
+  publish_link: string | null;
+  is_published: boolean | null;
+  first_published_at: Date | null;
+  last_published_at: Date | null;
+  copyright_notice: string | null;
+  yield_ref_trade_uuids: string[] | null;
+  yield_ref_as_of_epoch: Date | null;
+  yield_ref_computed_at: Date | null;
+  yield_ref_is_stale: boolean | null;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
 }
 
 // ---------------------------------------------------------------------------
