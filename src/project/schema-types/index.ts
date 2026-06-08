@@ -481,6 +481,11 @@ export interface Database {
   since_trade_yield_summaries: SinceTradeYieldSummariesTable;
   trade_daily_mtm_series: TradeDailyMtmSeriesTable;
   trade_daily_mtm_archetype_contributions: TradeDailyMtmArchetypeContributionsTable;
+  // Era 4 / 4b — gain snapshots (gain-snapshots DDB→PG).
+  nightly_account_gains: NightlyAccountGainsTable;
+  nightly_portfolio_gains: NightlyPortfolioGainsTable;
+  as_of_account_gains: AsOfAccountGainsTable;
+  as_of_portfolio_gains: AsOfPortfolioGainsTable;
 }
 
 /**
@@ -1409,4 +1414,67 @@ export interface TradeDailyMtmArchetypeContributionsTable {
   car_contribution: string;
   created_at: Generated<Date>;
   created_by: string;
+}
+
+// ===========================================================================
+// Era 4 / 4b — gain snapshots (gain-snapshots DDB→PG)
+// NUMERIC/BIGINT → string (Number() at boundary); INTEGER → number; DATE → Date;
+// trigger timestamps → Generated<Date>. `& Partial<Provenance>` → nullable provenance cols.
+// ===========================================================================
+
+/** Shared gain + closed-trade W/L tally + meta + provenance + audit columns. */
+interface GainSnapshotColumns {
+  /** NUMERIC. */
+  cumulative_gain: string;
+  realized_gain: string;
+  unrealized_gain: string;
+  trade_wins: number;
+  trade_losses: number;
+  trade_breakevens: number;
+  trade_win_rate: string | null;
+  trade_win_amount: string;
+  trade_loss_amount: string;
+  /** BIGINT. */
+  generated_on_epoch: string;
+  parent_job_id: string | null;
+  started_by: string | null;
+  job_id: string | null;
+  writer: string | null;
+  writer_version: string | null;
+  written_at: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/** Per (owner, date, brokerage, account) daily gain — forever ledger. */
+export interface NightlyAccountGainsTable extends GainSnapshotColumns {
+  owner: string;
+  date: Date;
+  brokerage: string;
+  account: string;
+}
+
+/** Per (owner, date) portfolio gain — forever ledger. */
+export interface NightlyPortfolioGainsTable extends GainSnapshotColumns {
+  owner: string;
+  date: Date;
+}
+
+/** Per (owner, as_of_date, brokerage, account) reconstituted gain — ttl-purged cache. */
+export interface AsOfAccountGainsTable extends GainSnapshotColumns {
+  owner: string;
+  as_of_date: Date;
+  brokerage: string;
+  account: string;
+  /** epoch SECONDS expiry (BIGINT). */
+  ttl: string;
+}
+
+/** Per (owner, as_of_date) reconstituted portfolio gain — ttl-purged cache. */
+export interface AsOfPortfolioGainsTable extends GainSnapshotColumns {
+  owner: string;
+  as_of_date: Date;
+  ttl: string;
 }
