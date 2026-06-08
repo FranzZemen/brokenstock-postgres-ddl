@@ -472,6 +472,15 @@ export interface Database {
   plan_version_features: PlanVersionFeaturesTable;
   user_subscriptions: UserSubscriptionsTable;
   feature_usage: FeatureUsageTable;
+  // Era 4 / 4a — yield persistence (trade-yield-persistence DDB→PG).
+  trade_yield_segments: TradeYieldSegmentsTable;
+  trade_yield_segment_transaction_portions: TradeYieldSegmentTransactionPortionsTable;
+  sub_trade_yield_units: SubTradeYieldUnitsTable;
+  open_trade_yield_summaries: OpenTradeYieldSummariesTable;
+  as_of_trade_yield_summaries: AsOfTradeYieldSummariesTable;
+  since_trade_yield_summaries: SinceTradeYieldSummariesTable;
+  trade_daily_mtm_series: TradeDailyMtmSeriesTable;
+  trade_daily_mtm_archetype_contributions: TradeDailyMtmArchetypeContributionsTable;
 }
 
 /**
@@ -1162,4 +1171,242 @@ export interface FeatureUsageTable {
   updated_by: string | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
+}
+
+// ===========================================================================
+// Era 4 / 4a — yield persistence (trade-yield-persistence DDB→PG)
+// NUMERIC/BIGINT read back as string (Number() at the boundary, per trades TR-7);
+// INTEGER → number; DATE → Date; trigger-managed timestamps → Generated<Date>.
+// ===========================================================================
+
+/** Per-segment yield facts, scoped by context ('open' | 'asOf:DATE' | 'since:EPOCH'). */
+export interface TradeYieldSegmentsTable {
+  /** App-minted PK `<uuid>.trade-yield-segment`. */
+  segment_id: string;
+  /** Branded `<uuid>.user`. */
+  owner: string;
+  /** trades.trade_id FK ON DELETE CASCADE. */
+  trade_id: string;
+  context: string;
+  sub_trade_uuids: Generated<string[]>;
+  archetype: string;
+  /** NUMERIC. */
+  denominator: string;
+  /** BIGINT. */
+  start_epoch: string;
+  end_epoch: string | null;
+  start_boundary_kind: string;
+  end_boundary_kind: string | null;
+  gain: string;
+  mtm_price_at_boundary: string | null;
+  days: number;
+  yield: string;
+  fees_and_commissions: string;
+  explanation: string | null;
+  /** managed-rolls lineage/DAG (bounded uuid arrays). */
+  leaf_chain_uuids: string[] | null;
+  prior_segment_uuids: string[] | null;
+  closing_transaction_uuids: string[] | null;
+  opening_transaction_uuids: string[] | null;
+  family_cluster_id: string | null;
+  /** boundaryQuantityDelta {prior, current} — NUMERIC, read back as string. */
+  boundary_qty_delta_prior: string | null;
+  boundary_qty_delta_current: string | null;
+  started_by: string | null;
+  job_id: string | null;
+  writer: string | null;
+  writer_version: string | null;
+  written_at: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/** The unbounded `transactionPortions[]` of a segment, relationalized (4a-4). */
+export interface TradeYieldSegmentTransactionPortionsTable {
+  segment_id: string;
+  /** transactions.transaction_id FK ON DELETE CASCADE. */
+  transaction_id: string;
+  portion: string;
+  created_at: Generated<Date>;
+  created_by: string;
+}
+
+/** Per-symbol forensic yield units, scoped by context. */
+export interface SubTradeYieldUnitsTable {
+  /** App-minted PK `<uuid>.sub-trade-yield-unit`. */
+  unit_id: string;
+  owner: string;
+  trade_id: string;
+  context: string;
+  /** `<uuid>.sub-trade`. */
+  sub_trade_id: string;
+  symbol: string;
+  archetype: string;
+  denominator: string;
+  start_epoch: string;
+  end_epoch: string | null;
+  gain: string;
+  mtm_price_at_boundary: string | null;
+  days: number;
+  yield: string;
+  fees_and_commissions: string;
+  explanation: string | null;
+  started_by: string | null;
+  job_id: string | null;
+  writer: string | null;
+  writer_version: string | null;
+  written_at: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/** One PSCaR summary per (owner, trade). */
+export interface OpenTradeYieldSummariesTable {
+  owner: string;
+  trade_id: string;
+  peak_simultaneous_car: string;
+  start_epoch: string;
+  end_epoch: string | null;
+  days: number;
+  total_gain: string;
+  realized_gain: string;
+  unrealized_gain: string;
+  passive_gain: string;
+  fees_and_commissions: string;
+  yield: string;
+  annualized_yield_linear: string;
+  annualized_yield_cagr: string;
+  sub_trade_wins: number;
+  sub_trade_losses: number;
+  sub_trade_breakevens: number;
+  sub_trade_win_rate: string | null;
+  sub_trade_win_amount: string;
+  sub_trade_loss_amount: string;
+  /** 'realtime' | 'most-recent-close' (CHECK). */
+  price_source: string | null;
+  closing_date: Date | null;
+  computed_at: string;
+  explanation: string | null;
+  price_coverage: string | null;
+  recompute_attempts: number | null;
+  started_by: string | null;
+  job_id: string | null;
+  writer: string | null;
+  writer_version: string | null;
+  written_at: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/** One summary per (owner, trade, as_of_date). Nullable analytics carry an `error` row. */
+export interface AsOfTradeYieldSummariesTable {
+  owner: string;
+  trade_id: string;
+  as_of_date: Date;
+  as_of_epoch: string;
+  peak_simultaneous_car: string | null;
+  start_epoch: string | null;
+  end_epoch: string | null;
+  days: number | null;
+  total_gain: string | null;
+  realized_gain: string | null;
+  unrealized_gain: string | null;
+  passive_gain: string | null;
+  fees_and_commissions: string | null;
+  yield: string | null;
+  annualized_yield_linear: string | null;
+  annualized_yield_cagr: string | null;
+  sub_trade_wins: number | null;
+  sub_trade_losses: number | null;
+  sub_trade_breakevens: number | null;
+  sub_trade_win_rate: string | null;
+  sub_trade_win_amount: string | null;
+  sub_trade_loss_amount: string | null;
+  price_coverage: string | null;
+  error: string | null;
+  price_source: string | null;
+  closing_date: Date | null;
+  explanation: string | null;
+  computed_at: string;
+  started_by: string | null;
+  job_id: string | null;
+  writer: string | null;
+  writer_version: string | null;
+  written_at: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/** One summary per (owner, trade, since_anchor_epoch). */
+export interface SinceTradeYieldSummariesTable {
+  owner: string;
+  trade_id: string;
+  since_anchor_epoch: string;
+  gain_since: string | null;
+  peak_simultaneous_car: string | null;
+  start_epoch: string | null;
+  end_epoch: string | null;
+  days: number | null;
+  total_gain: string | null;
+  realized_gain: string | null;
+  unrealized_gain: string | null;
+  passive_gain: string | null;
+  fees_and_commissions: string | null;
+  yield: string | null;
+  annualized_yield_linear: string | null;
+  annualized_yield_cagr: string | null;
+  sub_trade_wins: number | null;
+  sub_trade_losses: number | null;
+  sub_trade_breakevens: number | null;
+  sub_trade_win_rate: string | null;
+  sub_trade_win_amount: string | null;
+  sub_trade_loss_amount: string | null;
+  price_source: string | null;
+  closing_date: Date | null;
+  explanation: string | null;
+  computed_at: string;
+  started_by: string | null;
+  job_id: string | null;
+  writer: string | null;
+  writer_version: string | null;
+  written_at: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/** Lazy daily MTM curve per trade (chart temporal series). */
+export interface TradeDailyMtmSeriesTable {
+  owner: string;
+  trade_id: string;
+  date_epoch: string;
+  date: Date;
+  mtm_amount: string;
+  car_at_date: string;
+  price_coverage: string;
+  computed_at: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/** Per-(daily-mtm row, archetype) CaR contribution — the relationalized bounded array. */
+export interface TradeDailyMtmArchetypeContributionsTable {
+  owner: string;
+  trade_id: string;
+  date_epoch: string;
+  archetype: string;
+  car_contribution: string;
+  created_at: Generated<Date>;
+  created_by: string;
 }
