@@ -488,6 +488,7 @@ export interface Database {
   as_of_portfolio_gains: AsOfPortfolioGainsTable;
   // Era 5 — final domain DDB→PG ports.
   synthetic_trades: SyntheticTradesTable;
+  synthetic_trade_item_refs: SyntheticTradeItemRefsTable;
   publisher_identity: PublisherIdentityTable;
   ops_split_metrics: OpsSplitMetricsTable;
   metered_vendor_credits: MeteredVendorCreditsTable;
@@ -504,6 +505,25 @@ export interface SyntheticTradesTable {
   symbol: string;
   name: string | null;
   status: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/**
+ * synthetic_trade_item_refs — @franzzemen/synthetic-trades component graph DDB→PG
+ * (Era 5). One row per (parent synthetic_trade_uuid, ordinal_position). FK to
+ * synthetic_trades(uuid) ON DELETE CASCADE; `referenced_uuid` index backs
+ * cycle-detection + parent-ref lookups.
+ */
+export interface SyntheticTradeItemRefsTable {
+  synthetic_trade_uuid: string;
+  ordinal_position: number;
+  referenced_uuid: string;
+  /** 'trade' | 'synthetic-trade' (CHECK). */
+  type: string;
+  owner: string;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
