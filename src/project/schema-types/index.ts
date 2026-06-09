@@ -486,6 +486,85 @@ export interface Database {
   nightly_portfolio_gains: NightlyPortfolioGainsTable;
   as_of_account_gains: AsOfAccountGainsTable;
   as_of_portfolio_gains: AsOfPortfolioGainsTable;
+  // Era 5 — final domain DDB→PG ports.
+  synthetic_trades: SyntheticTradesTable;
+  publisher_identity: PublisherIdentityTable;
+  ops_split_metrics: OpsSplitMetricsTable;
+  metered_vendor_credits: MeteredVendorCreditsTable;
+}
+
+/**
+ * synthetic_trades — @franzzemen/synthetic-trades DDB→PG (Era 5). `uuid` is the
+ * app-minted globally-unique PK; `owner` denormalized for owner-scoped reads.
+ * Epoch boundary (createdEpoch/updatedEpoch) materializes from created_at/updated_at.
+ */
+export interface SyntheticTradesTable {
+  uuid: string;
+  owner: string;
+  symbol: string;
+  name: string | null;
+  status: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/**
+ * publisher_identity — @franzzemen/publish-thesis DDB→PG (Era 5). One row per
+ * owner; publisher_uuid is the unique public path segment.
+ */
+export interface PublisherIdentityTable {
+  owner_uuid: string;
+  publisher_uuid: string;
+  is_index_published: Generated<boolean>;
+  index_link: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/**
+ * ops_split_metrics — @franzzemen/stock-splits DDB→PG (Era 5). Append-only ops
+ * telemetry. event_epoch BIGINT (reads back as string; Number() at boundary);
+ * split_factor/magnitude NUMERIC (string at boundary); details JSONB.
+ */
+export interface OpsSplitMetricsTable {
+  event_uuid: string;
+  event_type: string;
+  event_date: string;
+  event_epoch: string;
+  owner: string;
+  security_key: string | null;
+  effective_date: string | null;
+  split_factor: string | null;
+  magnitude: string | null;
+  details: unknown | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/**
+ * metered_vendor_credits — @franzzemen/financial-api DDB→PG (Era 5). One row per
+ * vendor; cross-process accounting via SELECT ... FOR UPDATE on the row. BIGINT
+ * columns read back as string (Number() at boundary); buckets is a JSONB
+ * { [epochSecond: string]: creditsUsed }.
+ */
+export interface MeteredVendorCreditsTable {
+  vendor: string;
+  credits_per_period: string;
+  period_millis: string;
+  buckets: Generated<Record<string, number>>;
+  version: Generated<string>;
+  forever_start: string;
+  forever_credits_used: Generated<string>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
 }
 
 /**
