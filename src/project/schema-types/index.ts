@@ -492,6 +492,30 @@ export interface Database {
   publisher_identity: PublisherIdentityTable;
   ops_split_metrics: OpsSplitMetricsTable;
   metered_vendor_credits: MeteredVendorCreditsTable;
+  operational_alerts: OperationalAlertsTable;
+}
+
+/**
+ * operational_alerts — @franzzemen/brokenstock-alerts DDB+SQS→PG (Era 5). The SQS
+ * enqueue + writer Lambda collapse to a direct upsert; dedup/re-open serialized by
+ * a row lock on dedupe_key. resolved_epoch/ttl_epoch BIGINT (read back as string);
+ * description + notes are JSONB (notes is the AlertNote[] append log).
+ */
+export interface OperationalAlertsTable {
+  alert_id: string;
+  type: string;
+  /** 'New' | 'In Progress' | 'Resolved' (CHECK). */
+  status: string;
+  dedupe_key: string;
+  owner: string | null;
+  description: unknown | null;
+  resolved_epoch: string | null;
+  ttl_epoch: string | null;
+  notes: Generated<unknown>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
 }
 
 /**
