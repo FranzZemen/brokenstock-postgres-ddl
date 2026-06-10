@@ -493,6 +493,88 @@ export interface Database {
   ops_split_metrics: OpsSplitMetricsTable;
   metered_vendor_credits: MeteredVendorCreditsTable;
   operational_alerts: OperationalAlertsTable;
+  pending_work: PendingWorkTable;
+  observability_events: ObservabilityEventsTable;
+  batch_control: BatchControlTable;
+  batch_control_workers: BatchControlWorkersTable;
+}
+
+/**
+ * pending_work — @franzzemen/pending-work DDB→PG (Era 5). work_id PK; owner
+ * nullable (user kinds omit it). ttl_epoch BIGINT (read back as string).
+ */
+export interface PendingWorkTable {
+  work_id: string;
+  owner: string | null;
+  kind: string;
+  scope_key: string;
+  producer: string;
+  status: string;
+  ttl_epoch: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/**
+ * observability_events — @franzzemen/observability DDB→PG (Era 5). Append-only.
+ * epoch_ms BIGINT; rru/wru/duration_ms NUMERIC (read back as string); dims JSONB.
+ */
+export interface ObservabilityEventsTable {
+  event_id: string;
+  owner: string;
+  namespace: string;
+  kind: string;
+  epoch_ms: string;
+  dims: unknown | null;
+  rru: string | null;
+  wru: string | null;
+  duration_ms: string | null;
+  success: boolean | null;
+  producer: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/**
+ * batch_control — @franzzemen/batch-control DDB→PG (Era 5). Process row + the
+ * distributed lease (lease_holder/lease_expiry). started/completed/lease BIGINT
+ * (read back as string); metadata/worker_counts JSONB.
+ */
+export interface BatchControlTable {
+  process_id: string;
+  status: string;
+  started_by: string | null;
+  started_epoch: string | null;
+  completed_epoch: string | null;
+  bookmark: string | null;
+  metadata: unknown | null;
+  worker_counts: unknown | null;
+  lease_holder: string | null;
+  lease_expiry: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+/**
+ * batch_control_workers — @franzzemen/batch-control DDB→PG (Era 5). One row per
+ * (process_id, worker_key). status is a column (GROUP BY for reconcile); the rest
+ * of the WorkerStatusRecord lives in the data JSONB payload.
+ */
+export interface BatchControlWorkersTable {
+  process_id: string;
+  worker_key: string;
+  status: string;
+  data: unknown | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
 }
 
 /**
