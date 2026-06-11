@@ -105,7 +105,7 @@ they just import it and read `migrationsDir`.
 This package ships **no `config.json.encrypt`**. Production runtime config
 (Aurora endpoints, IAM users, pool sizing) is delivered to `pg-app.migrate` by
 `@franzzemen/execution-context-secrets-loader`, reading from the same Secrets
-Manager secret-set the broken-stock-admin lambda writes. The host's IAM role
+Manager secret-set the broken-stock-admin tooling writes. The host's IAM role
 (`Secrets-Manager-User-Policy`) authorises the read; no `AWSSECRET` env var is
 involved.
 
@@ -180,7 +180,7 @@ extension itself must be added to the cluster's parameter group's
 
 For Pre-Era-1.7, this is handled out-of-band on prod_blue only:
 
-1. Operator (or admin lambda, where applicable) connects to the Aurora
+1. Operator connects to the Aurora
    prod_blue cluster master as a sufficiently-privileged role.
 2. Runs `CREATE EXTENSION pg_cron;` once. This is idempotent against an
    already-installed extension.

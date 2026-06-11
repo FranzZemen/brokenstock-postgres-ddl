@@ -114,9 +114,11 @@ Rolls back all 9 Era 2 migrations against `dev_franz`. Use the same `<db>` you a
 
 **WARNING:** Rollback is for the schema-only window before C3 domain packages or C4 vendor-sync-worker have written data. Once data lands, rollback drops live state — coordinate with C5 cutover validation.
 
-## DDB-side state during the migration window
+## DDB-side state during the migration window (historical)
 
-Per `[[project-ddb-retention-policy]]`: DDB tables for migrated domains are dropped in the same Era 2 child PRD as the corresponding Lambda decommission (C6). They remain populated and queryable until C6 closes; this lets C5 backfill and verify against them without time pressure.
+> **Superseded by the Era-5 DDB→Postgres + Lambda→worker migration, 2026-06-10 — system is LIVE.** DynamoDB is fully decommissioned (zero tables/backups); all reference data lives in Aurora Postgres (`prod_blue`). The retention/cutover mechanics below describe the now-closed migration window and are retained for history only.
+
+Per `[[project-ddb-retention-policy]]`: DDB tables for migrated domains were dropped in the same Era 2 child PRD as the corresponding Lambda decommission (C6). They remained populated and queryable until C6 closed; this let C5 backfill and verify against them without time pressure.
 
 ## Cross-references
 
