@@ -429,6 +429,29 @@ export interface TickerDataRatiosTable {
 // Database — pass as the kysely generic.
 // ---------------------------------------------------------------------------
 
+// Era 5 — audit-chain Postgres backing (publish/thesis audit trail; replaces the
+// retired s3-dynamo provider). Append-only; integrity via the per-entry hash chain.
+export interface AuditChainEntryTable {
+  sequence_number: number;
+  timestamp: string;
+  actor_id: string;
+  actor_roles: unknown;          // JSONB Roles[]
+  action_type: string;
+  resource_type: string;
+  resource_id: string;
+  resource_key: string;          // `${resourceType}#${resourceId}`
+  payload: unknown | null;       // JSONB
+  previous_hash: string;
+  current_hash: string;
+  signature: string;
+  key_version: string;
+}
+
+export interface AuditChainCounterTable {
+  id: string;
+  sequence_number: number;
+}
+
 export interface Database {
   users: UsersTable;
   roles: RolesTable;
@@ -497,6 +520,8 @@ export interface Database {
   observability_events: ObservabilityEventsTable;
   batch_control: BatchControlTable;
   batch_control_workers: BatchControlWorkersTable;
+  audit_chain_entry: AuditChainEntryTable;
+  audit_chain_counter: AuditChainCounterTable;
 }
 
 /**
