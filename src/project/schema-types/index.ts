@@ -199,8 +199,8 @@ export interface SecuritiesTable {
 export interface SecurityAliasesTable {
   alias_type: string;
   alias: string;
-  /** securities.key FK RESTRICT. */
-  security_key: string;
+  /** securities.key FK RESTRICT. NULL for ignored/unlisted aliases (no real security — e.g. cash symbols). */
+  security_key: string | null;
   ignored: boolean | null;
   unlisted: boolean | null;
   created_at: Generated<Date>;
