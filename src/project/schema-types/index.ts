@@ -288,7 +288,7 @@ export interface PricesEquityTable {
   low: number;
   open: number;
   close: number;
-  volume: bigint | null;
+  volume: number | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
