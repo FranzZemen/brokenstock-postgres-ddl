@@ -801,8 +801,11 @@ export interface VendorSyncJobsTable {
 // loss); FK columns referencing them are typed `string`.
 // ---------------------------------------------------------------------------
 
-/** Parent job lifecycle (RD-6). */
+/** Parent job lifecycle (RD-6). `queued` (collision-policy `queue`) is a parked
+ *  status OUTSIDE the single-flight active set — promoted to `running` when the
+ *  partition_key frees. `canceled` is the terminal state of a superseded job. */
 export type JobStatus =
+  | 'queued'
   | 'planning'
   | 'running'
   | 'finalizing'
@@ -811,8 +814,9 @@ export type JobStatus =
   | 'failed'
   | 'canceled';
 
-/** Queue-row lifecycle for chunks + generic queue rows (RD-9): failed=poison, dead=exhausted. */
-export type QueueRowStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'dead';
+/** Queue-row lifecycle for chunks + generic queue rows (RD-9): failed=poison,
+ *  dead=exhausted, canceled=pending chunk of a superseded job (collision-policy `supersede`). */
+export type QueueRowStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'dead' | 'canceled';
 
 /** Work chunk vs the separate finalize chunk-of-one (RD-5). */
 export type JobChunkKind = 'work' | 'finalize';
@@ -828,6 +832,17 @@ export interface JobTable {
   chunk_total: Generated<number>;
   chunk_completed: Generated<number>;
   chunk_failed: Generated<number>;
+  /** Set true by a coalesced collision; finalize re-arms once then clears it
+   *  (collision-policy `coalesce` + dirty-rerun). */
+  dirty: Generated<boolean>;
+  /** Debounce schedule + FE countdown (collision-policy `coalesce` + debounce):
+   *  absolute timestamp the dirty-rerun is gated to. NULL = run when claimable. */
+  next_run_at: Date | null;
+  /** Parked fan-out spec (PartitionSpec[]) for a `queued` job (collision-policy
+   *  `queue`); consumed + cleared when the job is promoted. NULL otherwise. */
+  queued_partitions: unknown;
+  /** Consecutive dirty-reruns for one finalize lineage; gates the rerun cap. */
+  rerun_count: Generated<number>;
   payload: unknown;
   result: unknown;
   error: string | null;
