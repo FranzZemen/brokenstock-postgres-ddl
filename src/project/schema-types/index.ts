@@ -452,6 +452,34 @@ export interface AuditChainCounterTable {
   sequence_number: number;
 }
 
+// ---------------------------------------------------------------------------
+// fleet_admin_audit — Fleet Admin Console central audit trail (PRD E2 / D9).
+// Append-mostly: INSERT at action start, optional single UPDATE on completion.
+// BIGINT identity PK comes back from node-pg as a string (see job_id).
+// ---------------------------------------------------------------------------
+
+export interface FleetAdminAuditTable {
+  id: Generated<string>;
+  actor: string;
+  actor_roles: Generated<unknown>;
+  /** 'monitor' | 'runtime' | 'iac' (CHECK-constrained). */
+  tier: string;
+  action: string;
+  target_kind: string | null;
+  target: string | null;
+  env: string;
+  db_name: string | null;
+  params: Generated<unknown>;
+  /** 'started' | 'success' | 'failure' (CHECK-constrained). */
+  status: string;
+  ssm_command_id: string | null;
+  result: string | null;
+  output: string | null;
+  error: string | null;
+  created_at: Generated<Date>;
+  completed_at: Date | null;
+}
+
 export interface Database {
   users: UsersTable;
   roles: RolesTable;
@@ -522,6 +550,7 @@ export interface Database {
   batch_control_workers: BatchControlWorkersTable;
   audit_chain_entry: AuditChainEntryTable;
   audit_chain_counter: AuditChainCounterTable;
+  fleet_admin_audit: FleetAdminAuditTable;
 }
 
 /**
@@ -1270,6 +1299,13 @@ export interface TransferPendingTable {
   match_blocked_reason: string | null;
   origin_name: string | null;
   last_match_attempt_at: Date | null;
+  /**
+   * User-set "leave this leg alone" flag. Dismissed legs are filtered out of the
+   * matcher candidate read and the Pending tab, and the flag survives re-import
+   * (putForTransactions never writes it on conflict). Escape hatch for legs that
+   * can't be auto-resolved (no source history, orphaned counterpart).
+   */
+  dismissed: Generated<boolean>;
   /** Audit. `createdAt` (domain) is materialized from created_at (same instant). */
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
