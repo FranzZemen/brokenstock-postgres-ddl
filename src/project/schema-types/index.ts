@@ -765,7 +765,6 @@ export interface ThesisTable {
   /** timeWindow.endEpoch (timestamptz). */
   time_window_end_epoch: Date | null;
   accounts: string[] | null;
-  exclude_sealed: boolean | null;
   narrative_s3_key: string | null;
   publish_slug: string | null;
   publish_link: string | null;
@@ -1206,7 +1205,6 @@ export interface TradesTable {
   security_key: string;
   /** 'Open' | 'Closed' | 'Open Imbalance' (CHECK). */
   status: string;
-  sealed: Generated<boolean>;
   /** TR-2 — BIGINT, keeps MIN/MAX_SAFE_INTEGER sentinels (reads back as string;
    *  Number() at the boundary). NOT timestamptz. */
   opened_epoch: string;
