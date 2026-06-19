@@ -803,7 +803,11 @@ export type VendorSyncFeedType =
   | 'stock-splits-fetch'
   | 'market-calendar'
   | 'ticker-info'
-  | 'ticker-ratios';
+  | 'ticker-ratios'
+  // Ad-hoc background repair of corrupted equity price history (PRD E5). Unlike the
+  // scheduled feeds it is not dedupe-by-day (multiple repairs may run in a day), and
+  // its payload carries the target securityKeys.
+  | 'equity-price-repair';
 
 export interface VendorSyncJobsTable {
   /** uuid4 string PK. */
@@ -1589,6 +1593,13 @@ export interface OpenTradeYieldSummariesTable {
   writer: string | null;
   writer_version: string | null;
   written_at: string | null;
+  /**
+   * JSONB TradeYieldSegmentSummary.lineageGraph (managed-roll v3 inference output).
+   * Render-only, bounded payload — the FE Managed Rolls tab consumes it verbatim;
+   * no SQL queries inside it. Deliberate exception to era-4-4a's ZERO-jsonb rule
+   * (see restore-managed-roll-lineage-persistence.prd.md D2). NULL for equity-only trades.
+   */
+  lineage_graph: unknown | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;

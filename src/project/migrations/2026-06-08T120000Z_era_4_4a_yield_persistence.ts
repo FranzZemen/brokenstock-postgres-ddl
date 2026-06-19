@@ -24,6 +24,12 @@
  *  - 4a-3/4a-4 ZERO jsonb: the unbounded `transactionPortions[]` → child table
  *    FK'd to transactions; the bounded `segmentArchetypeContributions[]` → child
  *    table (JSONB requires explicit approval — not granted, so relational).
+ *    EXCEPTION (approved 2026-06-19, restore-managed-roll-lineage-persistence.prd.md
+ *    D2): the ZERO-jsonb rule governs query/aggregate FACTS (gains, portions, archetype
+ *    contributions) that the rollups SQL over. It does NOT govern bounded, RENDER-ONLY
+ *    payloads no SQL queries inside — `open_trade_yield_summaries.lineage_graph` (the
+ *    managed-roll v3 inference DAG the FE consumes verbatim) is jsonb by approved
+ *    carve-out (migration 2026-06-19T130000Z_era_5_open_summary_lineage_graph).
  *  - 4a-4b summary segment_uuids[]/unit_uuids[] arrays DROPPED (DDB join-avoidance;
  *    a trade's facts come from WHERE (owner, trade_id, context)).
  *  - 4a-5 branded-text ids + CHECKs (.user / .trade / .trade-yield-segment /
