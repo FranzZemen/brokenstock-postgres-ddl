@@ -142,3 +142,18 @@ points at the version locked into that artifact.
   migration. Write `down` for hygiene, but don't rely on it.
 - **Don't import migration files directly.** Consumers import the
   `migrationsDir` path, not the migration modules.
+
+## Fleet Admin Console schema (0.13.24)
+
+The Fleet Admin Console added (migration in the global timeline, shipped 0.13.24,
+migrated to prod_blue + dev_franz):
+
+- **`fleet_admin_audit`** — append-only audit log of every console mutation
+  (restart/stop/start/prune/redeploy/rollback): actor, action, target, params, result,
+  timestamp. The console's DB-REST gateway (`admin-app-worker` `/admin/fleet/audit`) is the
+  only writer.
+- **Three capabilities** seeded on `admin-tools-administrator-role`: `fleet:read`
+  (monitor), `fleet:runtime-control` (the runtime mutations above), `fleet:iac-control`
+  (reserved for console epics E7/E8, not yet wired to actions).
+
+PRD: `~/dev/projects/doc/prd/fleet-admin-console.prd.md`.
