@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@franzzemen/build-system": "^34.1.0",
-    "@franzzemen/safe-config": "^5.1.35"
+    "@franzzemen/safe-config": "^5.1.36"
   },
   "exports": {
     ".": {
@@ -39,7 +39,7 @@
   "devDependencies": {
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "@types/pg": "^8.20.0",
     "chai": "^6.2.2",
     "kysely": "^0.29.2",
