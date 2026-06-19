@@ -289,6 +289,13 @@ export interface PricesEquityTable {
   open: number;
   close: number;
   volume: number | null;
+  /**
+   * Split-adjustment watermark — the date through which split adjustments are
+   * already baked into this bar (per-bar analog of a transaction's lastSplitDate).
+   * The rebase applies only splits with effective_date > adjusted_through_date.
+   * NULL on legacy rows written before the watermark existed (PRD E1/E8).
+   */
+  adjusted_through_date: Date | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
