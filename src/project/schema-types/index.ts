@@ -352,21 +352,32 @@ export interface PricesOptionsTable {
 }
 
 // ---------------------------------------------------------------------------
-// Era 2 ticker-data (super-PRD v0.4.0) — DDB TICKER_DATA (PK ticker, SK
-// COMPANY_INFO|RATIOS) normalized into two PK-only tables. Faithful typed
-// columns from CompanyInfo / Ratios; every number → DOUBLE PRECISION.
+// Era 6 (Reference Enrichment) — the Era-2 ticker_data_company_info table is
+// re-keyed into a security-centric model anchored to securities(key):
+//   security_reference          (1:1 with security; company overview body)
+//   security_related_companies  (peer tickers; order-ranked, no score)
+//   security_transitions        (same-entity ticker_change history; rename-only v1)
+// ticker_data_ratios is left untouched (out of Era-6 scope). Every number →
+// DOUBLE PRECISION; DATE = list_date; TIMESTAMPTZ = vendor_last_updated_utc,
+// delisted_utc. See 2026-06-20T120000Z_era_6_security_reference.ts.
 // ---------------------------------------------------------------------------
 
-export interface TickerDataCompanyInfoTable {
+export interface SecurityReferenceTable {
+  /** PK; `mic:ticker` securityKey → FK securities(key) ON DELETE RESTRICT. */
+  security_key: string;
+  /** Denormalized from the security. */
   ticker: string;
-  symbol: string;
-  name: string;
-  primary_exchange: string;
-  active: boolean;
-  /** CHECK: stocks | crypto | fx | otc | indices. */
-  market: string;
+  /** Denormalized from the security. */
+  mic: string;
+  /** Raw Massive type code ('CS','ADRC',…); mapped SecurityType = securities.asset_class. */
+  vendor_type: string | null;
+  /** Massive last_updated_utc (LIST endpoint freshness marker); drives delta refresh. */
+  vendor_last_updated_utc: Date | null;
+  active: Generated<boolean>;
+  name: string | null;
   description: string | null;
-  type: string | null;
+  /** CHECK (when present): stocks | crypto | fx | otc | indices. */
+  market: string | null;
   /** CHECK (when present): us | global. */
   locale: string | null;
   currency: string | null;
@@ -379,6 +390,7 @@ export interface TickerDataCompanyInfoTable {
   total_employees: number | null;
   list_date: Date | null;
   market_cap: number | null;
+  /** Massive share_class_shares_outstanding. */
   shares_outstanding: number | null;
   weighted_shares_outstanding: number | null;
   round_lot: number | null;
@@ -395,6 +407,40 @@ export interface TickerDataCompanyInfoTable {
   ticker_root: string | null;
   ticker_suffix: string | null;
   delisted_utc: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface SecurityRelatedCompaniesTable {
+  /** Subject security → FK securities(key) ON DELETE CASCADE. */
+  security_key: string;
+  /** Denormalized vendor symbol of the peer. */
+  related_ticker: string;
+  /** Best-effort: resolved only when held + unambiguous across MICs; else NULL. */
+  related_security_key: string | null;
+  /** Array index from /v1/related-companies — the only relevance signal. */
+  ordinal: number | null;
+  refreshed_at: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface SecurityTransitionsTable {
+  /** Current entity → FK securities(key) ON DELETE CASCADE. */
+  security_key: string;
+  /** Date of the change to to_ticker. */
+  effective_date: Date;
+  from_ticker: string | null;
+  to_ticker: string | null;
+  /** Best-effort FK (old symbol is usually delisted → not held → NULL). */
+  from_security_key: string | null;
+  to_security_key: string | null;
+  /** CHECK: 'ticker_change' (rename-only v1; extensible). */
+  transition_type: Generated<string>;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
@@ -503,7 +549,9 @@ export interface Database {
   prices_equity: PricesEquityTable;
   prices_options: PricesOptionsTable;
   market_identifier_code_mappings: MarketIdentifierCodeMappingsTable;
-  ticker_data_company_info: TickerDataCompanyInfoTable;
+  security_reference: SecurityReferenceTable;
+  security_related_companies: SecurityRelatedCompaniesTable;
+  security_transitions: SecurityTransitionsTable;
   ticker_data_ratios: TickerDataRatiosTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
