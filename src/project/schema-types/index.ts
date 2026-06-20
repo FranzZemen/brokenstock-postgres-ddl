@@ -856,6 +856,11 @@ export type VendorSyncFeedType =
   // scheduled feeds it is not dedupe-by-day (multiple repairs may run in a day), and
   // its payload carries the target securityKeys.
   | 'equity-price-repair';
+// NOTE (Era 6): the DB feed_type CHECK ALSO admits 'security-reference-populate' and
+// 'security-reference-refresh' (migration 2026-06-20T130000Z). They are intentionally
+// NOT added to this union: changing the Database type forces a Kysely-invariance
+// rebuild of the entire @franzzemen closure for two enum values. The vendor-sync
+// worker casts those two literals to VendorSyncFeedType at the handler boundary.
 
 export interface VendorSyncJobsTable {
   /** uuid4 string PK. */
