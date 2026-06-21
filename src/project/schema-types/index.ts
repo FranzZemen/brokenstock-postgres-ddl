@@ -511,6 +511,39 @@ export interface NewsTickerFetchTable {
   updated_by: string;
 }
 
+// ---------------------------------------------------------------------------
+// security_branding_assets — Branding Image Ingestion (branding-image-ingestion.prd.md).
+// One row per (security_key, kind ∈ {icon, logo}). Batch source-of-truth + skip-gate;
+// the resolved `served_url` is written back into security_reference.icon_url/logo_url
+// (the FE read surface). NOTE: 'branding-images' is intentionally NOT in
+// VendorSyncFeedType — cast at the worker boundary (D10).
+// ---------------------------------------------------------------------------
+export interface SecurityBrandingAssetsTable {
+  /** PK part; FK security_reference(security_key) ON DELETE CASCADE. */
+  security_key: string;
+  /** PK part; CHECK icon | logo. */
+  kind: string;
+  /** Vendor URL last downloaded from (the key is never stored). */
+  source_url: string | null;
+  /** Object key in the private branding bucket. */
+  s3_key: string | null;
+  /** Our public CloudFront URL — written back to security_reference. */
+  served_url: string | null;
+  /** sha256 hex of the bytes; drives cache-bust path + S3 dedup. */
+  content_hash: string | null;
+  /** Preserved vendor content-type (image/png, image/svg+xml, …). */
+  content_type: string | null;
+  bytes: number | null;
+  /** CHECK pending | stored | failed | no_source. */
+  status: Generated<string>;
+  fetched_at: Date | null;
+  error: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
 export interface TickerDataRatiosTable {
   ticker: string;
   symbol: string;
@@ -620,6 +653,7 @@ export interface Database {
   news_article_ticker: NewsArticleTickerTable;
   news_article_insight: NewsArticleInsightTable;
   news_ticker_fetch: NewsTickerFetchTable;
+  security_branding_assets: SecurityBrandingAssetsTable;
   ticker_data_ratios: TickerDataRatiosTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
