@@ -15,6 +15,14 @@ new feeds DID get scheduled — only the unschedule was skipped).
 Robust pattern: guard on the job actually existing in cron.job (only true on the
 cron database where pg_cron registered it) — no dependency on the unreadable GUC.
 
+The guard MUST be `to_regclass('cron.job') IS NOT NULL` (a parse-safe text lookup
+that returns NULL when the relation is absent), NOT `EXISTS (SELECT 1 FROM cron.job …)`
+in the IF condition. PL/pgSQL parses/plans the whole IF condition up front, so a
+static `cron.job` reference there throws "relation cron.job does not exist" on any
+database where pg_cron is not installed (e.g. dev_franz). The PERFORM that DOES
+reference cron.job is planned lazily — only when the IF is true — so it never trips
+the parser on a cron-less database.
+
 No table/column changes — does NOT bump MIN_SCHEMA_VERSION.
 */
 
@@ -24,8 +32,7 @@ export const up = (pgm: MigrationBuilder): void => {
   pgm.sql(`
     DO $do$
     BEGIN
-      IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
-         AND EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'vendor-sync-ticker-info') THEN
+      IF to_regclass('cron.job') IS NOT NULL THEN
         PERFORM cron.unschedule(jobid) FROM cron.job WHERE jobname = 'vendor-sync-ticker-info';
       END IF;
     END
