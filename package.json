@@ -17,8 +17,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@franzzemen/build-system": "^34.1.2",
-    "@franzzemen/safe-config": "^5.1.38"
+    "@franzzemen/build-system": "^34.1.3",
+    "@franzzemen/safe-config": "^5.1.39"
   },
   "exports": {
     ".": {
