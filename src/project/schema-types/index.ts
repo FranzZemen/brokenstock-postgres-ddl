@@ -447,6 +447,70 @@ export interface SecurityTransitionsTable {
   updated_by: string;
 }
 
+// ---------------------------------------------------------------------------
+// Reference News (reference-news.prd.md, E1) — demand-driven Massive
+// /v2/reference/news cache. One article row (PK = Massive id) shared across
+// tickers; associated with ONLY the requested ticker; per-ticker sentiment;
+// a per-ticker CHECK-watermark. See 2026-06-21T130000Z_reference_news.ts.
+// ---------------------------------------------------------------------------
+
+export interface NewsArticleTable {
+  /** Massive stable article id. */
+  id: string;
+  title: string;
+  description: string | null;
+  article_url: string;
+  /** Publication time (not ingestion). */
+  published_utc: Date;
+  author: string | null;
+  image_url: string | null;
+  publisher_name: string | null;
+  publisher_homepage_url: string | null;
+  publisher_favicon_url: string | null;
+  publisher_logo_url: string | null;
+  keywords: string[] | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface NewsArticleTickerTable {
+  /** Requested ticker → FK securities(key) ON DELETE CASCADE. */
+  security_key: string;
+  /** → FK news_article(id) ON DELETE CASCADE. */
+  article_id: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface NewsArticleInsightTable {
+  /** → FK news_article(id) ON DELETE CASCADE. */
+  article_id: string;
+  /** The ticker this insight is for → FK securities(key) ON DELETE CASCADE. */
+  security_key: string;
+  /** CHECK: positive | negative | neutral. */
+  sentiment: string;
+  sentiment_reasoning: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface NewsTickerFetchTable {
+  /** PK securityKey → FK securities(key) ON DELETE CASCADE. */
+  security_key: string;
+  /** Time of the last SUCCESSFUL Massive check (not the newest article). */
+  last_checked_utc: Date;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
 export interface TickerDataRatiosTable {
   ticker: string;
   symbol: string;
@@ -552,6 +616,10 @@ export interface Database {
   security_reference: SecurityReferenceTable;
   security_related_companies: SecurityRelatedCompaniesTable;
   security_transitions: SecurityTransitionsTable;
+  news_article: NewsArticleTable;
+  news_article_ticker: NewsArticleTickerTable;
+  news_article_insight: NewsArticleInsightTable;
+  news_ticker_fetch: NewsTickerFetchTable;
   ticker_data_ratios: TickerDataRatiosTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
