@@ -123,9 +123,11 @@ export interface SessionsTable {
   invalidated: Generated<boolean>;
   refresh_token: string;
   refresh_token_expires_at: Date;
-  /** JSONB; consumers narrow to their own EffectivePermissions type. */
+  /** JSONB; consumers narrow to their own EffectivePermissions type. LEGACY — being retired; new consumers read `features`. */
   effective_permissions: Generated<unknown>;
   permissions_stale: Generated<boolean>;
+  /** JSONB plan-feature grant map; consumers narrow to their own Features type (`Record<slug, true | number>`). Resolved at login, hydrated on read. */
+  features: Generated<unknown>;
   expires_at: Date;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
