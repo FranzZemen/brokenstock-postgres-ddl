@@ -660,6 +660,7 @@ export interface Database {
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
   vendor_sync_jobs: VendorSyncJobsTable;
+  vendor_feed_coverage: VendorFeedCoverageTable;
   job: JobTable;
   job_chunk: JobChunkTable;
   queue: QueueTable;
@@ -669,6 +670,7 @@ export interface Database {
   brokerage_imports: BrokerageImportsTable;
   cash_entry: CashEntryTable;
   transactions: TransactionsTable;
+  transaction_split_history: TransactionSplitHistoryTable;
   trades: TradesTable;
   sub_trades: SubTradesTable;
   trade_journal_entries: TradeJournalEntriesTable;
@@ -983,6 +985,54 @@ export interface VendorSyncJobsTable {
   completed_at: Date | null;
   /** EC2 IMDS instance-id of the worker that claimed the job. */
   worker_instance_id: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
+// vendor_feed_coverage — per-feed "covered through" watermark for the
+// retroactive price planner (equity-price-retroactive-refresh.prd.md E1/D4).
+// One row per feed_type. Deliberately distinct from vendor_sync_jobs (the queue)
+// and from prices_equity content (which lazy-REST + ad-hoc writes contaminate as
+// a watermark). The planner reads covered_through_date to compute the fetch
+// range; the per-date handler advances it monotonically on a successful load.
+// ---------------------------------------------------------------------------
+export interface VendorFeedCoverageTable {
+  /** feed_type PK, e.g. 'equity-prices' / 'options-prices'. */
+  feed_type: string;
+  /** Last trading date fully loaded by the feed. NULL = cold start. Monotonic. */
+  covered_through_date: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
+// transaction_split_history — per-(transaction, split) ledger of applied split
+// factors (equity-price-retroactive-refresh.prd.md E8 / D10-D13). Provenance +
+// recompute-input for reset-then-replay (E9); read only OFF the hot valuation
+// path (consumers still read the materialized transactions.quantity/price).
+// FK to transactions (ON DELETE CASCADE — unimport drops the ledger rows too) and
+// composite FK to stock_splits (ON DELETE RESTRICT — a split can't be deleted
+// while ledger rows reference it; forces an explicit recompute, D12). Equity-only
+// (D13 — option adjustments arrive as broker import transactions, not factors).
+// Grain: a row exists only for a split with effective_date > the tx's trade_date,
+// so the table is sparse.
+// ---------------------------------------------------------------------------
+export interface TransactionSplitHistoryTable {
+  /** transactions.transaction_id FK ON DELETE CASCADE. */
+  transaction_id: string;
+  /** stock_splits.security_key — composite FK ON DELETE RESTRICT. */
+  security_key: string;
+  /** stock_splits.effective_date — composite FK ON DELETE RESTRICT. */
+  effective_date: Date;
+  /** The stock_splits.split_factor applied here (quantity *= factor, price /= factor). */
+  factor: number;
+  /** When the recompute wrote this ledger row. */
+  applied_at: Generated<Date>;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
