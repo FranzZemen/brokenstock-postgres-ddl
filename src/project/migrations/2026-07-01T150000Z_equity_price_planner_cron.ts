@@ -68,11 +68,31 @@ const FEED_TYPES_AFTER = [...FEED_TYPES_BEFORE, 'equity-prices-plan', 'options-p
 
 const jobName = (feed: string): string => `vendor-sync-${feed}`;
 
+// IMPORTANT — the ON CONFLICT must name the PARTIAL-index predicate. The Admin
+// Batch Control migration (2026-06-20T150000Z) replaced the full unique index on
+// (feed_type, scheduled_for_date) with a PARTIAL one
+//   WHERE (feed_type <> 'equity-price-repair' AND NOT ad_hoc)
+// but the Era-5 pg_cron enqueue SQL kept the bare `ON CONFLICT (cols)`, which does
+// NOT match a partial index — so EVERY vendor-sync cron has failed since 2026-06-20
+// with "no unique or exclusion constraint matching the ON CONFLICT specification"
+// and no cron has enqueued a job since. This migration re-schedules ALL vendor-sync
+// crons with the predicate-qualified ON CONFLICT to restore them. (cron rows are
+// always ad_hoc=false + non-repair, so they fall inside the partial index.)
 const enqueueSql = (feed: string): string => `
   INSERT INTO vendor_sync_jobs (job_id, feed_type, scheduled_for_date, created_by, updated_by)
   VALUES (gen_random_uuid()::text || '.vendor-sync-job', '${feed}', current_date, '${SYSTEM_OWNER}', '${SYSTEM_OWNER}')
-  ON CONFLICT (feed_type, scheduled_for_date) DO NOTHING;
+  ON CONFLICT (feed_type, scheduled_for_date) WHERE (feed_type <> 'equity-price-repair' AND NOT ad_hoc) DO NOTHING;
 `.trim();
+
+// The other vendor-sync crons broken by the same partial-index bug — re-scheduled
+// here with the corrected enqueue SQL (schedules unchanged from Era-5/Era-6).
+const REPAIR_JOBS: ReadonlyArray<{feed: string; schedule: string}> = [
+  {feed: 'stock-splits-fetch',             schedule: '0 11 * * 0'},
+  {feed: 'market-calendar',                schedule: '0 13 1 * *'},
+  {feed: 'ticker-ratios',                  schedule: '0 7 * * 1-5'},
+  {feed: 'security-reference-populate',    schedule: '0 12 * * 0'},
+  {feed: 'security-reference-refresh',     schedule: '0 14 1 * *'},
+];
 
 const checkSql = (feeds: string[]): string =>
   `feed_type IN (${feeds.map(f => `'${f}'`).join(', ')})`;
@@ -114,9 +134,13 @@ export const up = (pgm: MigrationBuilder): void => {
   pgm.sql(`ALTER TABLE vendor_sync_jobs DROP CONSTRAINT IF EXISTS vendor_sync_jobs_feed_type_chk;`);
   pgm.sql(`ALTER TABLE vendor_sync_jobs ADD CONSTRAINT vendor_sync_jobs_feed_type_chk CHECK (${checkSql(FEED_TYPES_AFTER)});`);
 
-  // 2. Retire the direct current_date crons; schedule the planners.
+  // 2. Retire the direct current_date price crons; schedule the planners.
   for (const feed of RETIRED_DIRECT_FEEDS) unscheduleJob(pgm, feed);
   for (const {feed, schedule} of PLAN_JOBS) scheduleJob(pgm, feed, schedule);
+
+  // 2b. Re-schedule the OTHER vendor-sync crons with the corrected (partial-index)
+  // ON CONFLICT — they have all been failing to enqueue since 2026-06-20.
+  for (const {feed, schedule} of REPAIR_JOBS) scheduleJob(pgm, feed, schedule);
 
   // 3. Seed coverage-row shells (cold start; E10 resets explicitly).
   pgm.sql(`
