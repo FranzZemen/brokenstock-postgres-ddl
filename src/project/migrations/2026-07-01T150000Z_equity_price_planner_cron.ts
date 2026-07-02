@@ -59,10 +59,14 @@ const PLAN_JOBS: ReadonlyArray<{feed: string; schedule: string}> = [
 // The direct per-date cron jobs being retired (they enqueued current_date).
 const RETIRED_DIRECT_FEEDS = ['equity-prices', 'options-prices'] as const;
 
+// NOTE: 'branding-images' is a live feed_type (branding-image-ingestion.prd.md, E6)
+// added to the CHECK after the first draft of this list — it MUST be carried through
+// both BEFORE and AFTER, or the constraint rebuild rejects the existing branding-images
+// job row ("check constraint … is violated by some row").
 const FEED_TYPES_BEFORE = [
   'equity-prices', 'options-prices', 'stock-splits-fetch', 'market-calendar',
   'ticker-info', 'ticker-ratios', 'equity-price-repair',
-  'security-reference-populate', 'security-reference-refresh',
+  'security-reference-populate', 'security-reference-refresh', 'branding-images',
 ];
 const FEED_TYPES_AFTER = [...FEED_TYPES_BEFORE, 'equity-prices-plan', 'options-prices-plan'];
 
