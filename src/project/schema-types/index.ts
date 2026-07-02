@@ -632,6 +632,24 @@ export interface FleetAdminAuditTable {
   completed_at: Date | null;
 }
 
+/**
+ * scanner_settings — per-user saved scanner filter-sets (scanners.prd.md
+ * E1/D8). PK (owner, scanner_slug, name); v1 UI uses the single 'default'
+ * name. owner = '<uuid>.user' (strict format CHECK, no FK — the standard
+ * owner-scoped domain-table convention).
+ */
+export interface ScannerSettingsTable {
+  owner: string;
+  scanner_slug: string;
+  name: Generated<string>;
+  /** JSONB; consumers narrow to the scanner's own filter shape (e.g. UniverseScreenFilter for 'price-size'). */
+  settings: unknown;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
 export interface Database {
   users: UsersTable;
   roles: RolesTable;
@@ -651,6 +669,7 @@ export interface Database {
   security_reference: SecurityReferenceTable;
   security_related_companies: SecurityRelatedCompaniesTable;
   security_transitions: SecurityTransitionsTable;
+  scanner_settings: ScannerSettingsTable;
   news_article: NewsArticleTable;
   news_article_ticker: NewsArticleTickerTable;
   news_article_insight: NewsArticleInsightTable;
