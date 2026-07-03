@@ -1195,7 +1195,8 @@ export type FileImportStatus =
   | 'retrying'
   | 'pending duplicate records decision'
   | 'calculating-dependencies'
-  | 'complete';
+  | 'complete'
+  | 'needs-attention';
 
 /** financial-identity imports/parser-name.ts:6 — the 6 parsers. */
 export type ParserName =
