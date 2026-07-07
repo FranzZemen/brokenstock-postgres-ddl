@@ -642,7 +642,7 @@ export interface ScannerSettingsTable {
   owner: string;
   scanner_slug: string;
   name: Generated<string>;
-  /** JSONB; consumers narrow to the scanner's own filter shape (e.g. UniverseScreenFilter for 'price-size'). */
+  /** JSONB; consumers narrow to the scanner's own filter shape (e.g. UniverseScreenFilter for 'daytrading'). */
   settings: unknown;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
