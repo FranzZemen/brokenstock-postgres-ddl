@@ -514,6 +514,51 @@ export interface NewsTickerFetchTable {
 }
 
 // ---------------------------------------------------------------------------
+// bz_news_article* — Benzinga real-time news (benzinga-news.prd.md, E1).
+// Durability side-write for the in-memory BenzingaNewsCache feed loop (never on
+// the read path). Deliberately separate from the Massive news_article* family —
+// Benzinga carries body/teaser/channels/tags/images and NO publisher/sentiment.
+// See 2026-07-09T120000Z_benzinga_news.ts.
+// ---------------------------------------------------------------------------
+
+export interface BzNewsArticleTable {
+  /** Benzinga stable integer id. BIGINT — reads back from node-pg as a string. */
+  benzinga_id: string;
+  title: string;
+  /** Short lead-in. */
+  teaser: string | null;
+  /** Full HTML article text (headline-only rows omit it). */
+  body: string | null;
+  author: string | null;
+  /** Editorial categories (earnings, price target, …). */
+  channels: string[] | null;
+  /** Themes (why it's moving, …). */
+  tags: string[] | null;
+  /** Sized image URLs. */
+  images: string[] | null;
+  url: string;
+  /** Publication time (not ingestion). */
+  published_utc: Date;
+  /** Benzinga edit/correction time. */
+  last_updated_utc: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface BzNewsArticleTickerTable {
+  /** Polled ticker → FK securities(key) ON DELETE CASCADE. */
+  security_key: string;
+  /** → FK bz_news_article(benzinga_id) ON DELETE CASCADE. BIGINT → string. */
+  benzinga_id: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // security_branding_assets — Branding Image Ingestion (branding-image-ingestion.prd.md).
 // One row per (security_key, kind ∈ {icon, logo}). Batch source-of-truth + skip-gate;
 // the resolved `served_url` is written back into security_reference.icon_url/logo_url
@@ -674,6 +719,8 @@ export interface Database {
   news_article_ticker: NewsArticleTickerTable;
   news_article_insight: NewsArticleInsightTable;
   news_ticker_fetch: NewsTickerFetchTable;
+  bz_news_article: BzNewsArticleTable;
+  bz_news_article_ticker: BzNewsArticleTickerTable;
   security_branding_assets: SecurityBrandingAssetsTable;
   ticker_data_ratios: TickerDataRatiosTable;
   smoke_events: SmokeEventsTable;
