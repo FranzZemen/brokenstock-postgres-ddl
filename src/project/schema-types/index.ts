@@ -1276,6 +1276,14 @@ export interface BrokerageAccountsTable {
   brokerage: Brokerage;
   account: string;
   nickname: string | null;
+  /** Virtual accounts (virtual-accounts.prd.md): non-null ⇔ virtual; FK to the
+   *  source real account's account_id (ON DELETE RESTRICT — app cascade first). */
+  source_account_id: string | null;
+  /** Virtual-only go-forward cutoff (both-or-neither with source_account_id);
+   *  fan-out drops transactions economically dated before start-of-day ET. */
+  start_at: Date | null;
+  /** Virtual-only irreversible close: import feed stops, valuation continues. */
+  closed_at: Date | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
@@ -1327,6 +1335,13 @@ export interface BrokerageFileImportsTable {
   metric_remapped_tx: number | null;
   /** FileImportMetrics.unlistedTx (CD-5). */
   metric_unlisted_tx: number | null;
+  /** Virtual-account fan-out lineage (virtual-accounts.prd.md): the source
+   *  real account's file_import_id this sibling was cloned from; ON DELETE
+   *  SET NULL. Delete fan-out targets by it. */
+  fanned_from_file_import_id: string | null;
+  /** Parse-stage count of transactions dropped by the virtual account's
+   *  start_at filter (economic date < start-of-day ET). */
+  metric_start_at_dropped_count: number | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
