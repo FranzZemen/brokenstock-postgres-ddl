@@ -395,6 +395,12 @@ export interface SecurityReferenceTable {
   /** Massive share_class_shares_outstanding. */
   shares_outstanding: number | null;
   weighted_shares_outstanding: number | null;
+  /** Massive free_float: shares freely tradable in the market (excludes strategic/locked holdings). */
+  free_float: number | null;
+  /** Massive free_float_percent: free float as a percentage of total shares outstanding. */
+  free_float_percent: number | null;
+  /** Massive effective_date of the free-float measurement (reporting-lagged). */
+  float_effective_date: Date | null;
   round_lot: number | null;
   ceo: string | null;
   fiscal_year_end: string | null;
