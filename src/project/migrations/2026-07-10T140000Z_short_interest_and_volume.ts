@@ -26,7 +26,7 @@ feed_type literals are admitted by the CHECK but NOT added to the exported
 VendorSyncFeedType union (worker casts at the boundary — same convention as the
 security-reference-* / branding-images / security-float-refresh feeds).
 
-Bumps MIN_SCHEMA_VERSION = 2026-07-10T130000Z.
+Bumps MIN_SCHEMA_VERSION = 2026-07-10T140000Z.
 */
 
 import type {MigrationBuilder} from 'node-pg-migrate';
