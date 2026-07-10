@@ -456,6 +456,48 @@ export interface SecurityTransitionsTable {
 }
 
 // ---------------------------------------------------------------------------
+// Short-sentiment feeds (short-interest-and-short-volume-feeds.prd.md, E1) —
+// dated history (graphable trend), cloned from the prices_equity template. NOT
+// columns on security_reference. See 2026-07-10T130000Z_short_interest_and_volume.ts.
+// ---------------------------------------------------------------------------
+
+export interface SecurityShortInterestTable {
+  /** securities.key FK CASCADE. */
+  security_key: string;
+  /** FINRA settlement date (bi-weekly). */
+  settlement_date: Date;
+  /** Shares sold short and not yet covered. */
+  short_interest: number | null;
+  /** Vendor avg daily volume (context for days_to_cover). */
+  avg_daily_volume: number | null;
+  /** short_interest / avg_daily_volume (vendor-computed). */
+  days_to_cover: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface SecurityShortVolumeTable {
+  /** securities.key FK CASCADE. */
+  security_key: string;
+  /** FINRA trade-activity date (daily). */
+  trade_date: Date;
+  /** Total shares sold short across all venues. */
+  short_volume: number | null;
+  /** Total reported volume across all venues. */
+  total_volume: number | null;
+  /** (short_volume / total_volume) * 100. */
+  short_volume_ratio: number | null;
+  exempt_volume: number | null;
+  non_exempt_volume: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // Reference News (reference-news.prd.md, E1) — demand-driven Massive
 // /v2/reference/news cache. One article row (PK = Massive id) shared across
 // tickers; associated with ONLY the requested ticker; per-ticker sentiment;
@@ -720,6 +762,8 @@ export interface Database {
   security_reference: SecurityReferenceTable;
   security_related_companies: SecurityRelatedCompaniesTable;
   security_transitions: SecurityTransitionsTable;
+  security_short_interest: SecurityShortInterestTable;
+  security_short_volume: SecurityShortVolumeTable;
   scanner_settings: ScannerSettingsTable;
   news_article: NewsArticleTable;
   news_article_ticker: NewsArticleTickerTable;
