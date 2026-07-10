@@ -120,6 +120,13 @@ Rolls back all 9 Era 2 migrations against `dev_franz`. Use the same `<db>` you a
 
 Per `[[project-ddb-retention-policy]]`: DDB tables for migrated domains were dropped in the same Era 2 child PRD as the corresponding Lambda decommission (C6). They remained populated and queryable until C6 closed; this let C5 backfill and verify against them without time pressure.
 
+## Post-Era-2 reference/sentiment tables
+
+Later feeds add `security_key`-keyed tables migrated the same way (each in its own dated migration; `schema-types/index.ts` carries the interfaces + JSDoc):
+
+- `security_reference` (+ `free_float`/`free_float_percent`/`float_effective_date` columns), `security_related_companies`, `security_transitions`, `security_branding_assets` — Era-6 reference enrichment + Security Free-Float Feed.
+- `security_short_interest` `(security_key, settlement_date)` and `security_short_volume` `(security_key, trade_date)` — Short Interest & Short Volume Feeds (dated history; `prices_equity` template minus split-rebase). Migration `2026-07-10T140000Z_short_interest_and_volume.ts` also admits the `security-short-interest` / `security-short-volume` / `security-short-volume-plan` feed_types and schedules their `pg_cron` jobs.
+
 ## Cross-references
 
 - Parent PRD: [`era-2-c01-postgres-schema-and-extensions.prd.md`](../../../../projects/doc/prd/era-2-c01-postgres-schema-and-extensions.prd.md)
