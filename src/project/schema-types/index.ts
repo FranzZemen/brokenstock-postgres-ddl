@@ -498,6 +498,64 @@ export interface SecurityShortVolumeTable {
 }
 
 // ---------------------------------------------------------------------------
+// IPO Feed (ipo-feed.prd.md, E1) — Massive /vX/reference/ipos IPO events.
+// STANDALONE event table, NOT security_key-keyed: rumor/pending/upcoming IPOs
+// have no security_reference row yet. PK = ipo_key = COALESCE(us_code, isin,
+// ticker) synthesized at write time. security_key is a NULLABLE best-effort
+// cross-link (NO FK). One durable row per offering, upserted in place; the
+// status lifecycle is preserved in ipo_status_transitions. See
+// 2026-07-10T150000Z_ipo_feed.ts.
+// ---------------------------------------------------------------------------
+
+/** Massive IPO lifecycle status (results[].ipo_status). */
+export type IpoStatus =
+  | 'direct_listing_process' | 'history' | 'new' | 'pending' | 'postponed' | 'rumor' | 'withdrawn';
+
+export interface IpoEventsTable {
+  /** COALESCE(us_code, isin, ticker) — synthesized durable offering id. */
+  ipo_key: string;
+  /** Best-effort resolve to an ACTIVE securities.key; NULL until the security exists. No FK. */
+  security_key: string | null;
+  ticker: string | null;
+  issuer_name: string | null;
+  ipo_status: IpoStatus;
+  /** MIC of the primary exchange. */
+  primary_exchange: string | null;
+  security_type: string | null;
+  security_description: string | null;
+  currency_code: string | null;
+  announced_date: Date | null;
+  issue_start_date: Date | null;
+  issue_end_date: Date | null;
+  /** First trading date for the newly listed entity. */
+  listing_date: Date | null;
+  lowest_offer_price: number | null;
+  highest_offer_price: number | null;
+  final_issue_price: number | null;
+  min_shares_offered: number | null;
+  max_shares_offered: number | null;
+  shares_outstanding: number | null;
+  lot_size: number | null;
+  total_offer_size: number | null;
+  isin: string | null;
+  us_code: string | null;
+  /** Vendor results[].last_updated (event last-modified date). */
+  vendor_last_updated: Date | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface IpoStatusTransitionsTable {
+  /** Matches ipo_events.ipo_key (no FK — replay edge cases). */
+  ipo_key: string;
+  ipo_status: IpoStatus;
+  /** When this pull first observed the status change. */
+  observed_at: Generated<Date>;
+}
+
+// ---------------------------------------------------------------------------
 // Reference News (reference-news.prd.md, E1) — demand-driven Massive
 // /v2/reference/news cache. One article row (PK = Massive id) shared across
 // tickers; associated with ONLY the requested ticker; per-ticker sentiment;
@@ -764,6 +822,8 @@ export interface Database {
   security_transitions: SecurityTransitionsTable;
   security_short_interest: SecurityShortInterestTable;
   security_short_volume: SecurityShortVolumeTable;
+  ipo_events: IpoEventsTable;
+  ipo_status_transitions: IpoStatusTransitionsTable;
   scanner_settings: ScannerSettingsTable;
   news_article: NewsArticleTable;
   news_article_ticker: NewsArticleTickerTable;
