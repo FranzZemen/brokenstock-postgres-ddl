@@ -126,6 +126,7 @@ Later feeds add `security_key`-keyed tables migrated the same way (each in its o
 
 - `security_reference` (+ `free_float`/`free_float_percent`/`float_effective_date` columns), `security_related_companies`, `security_transitions`, `security_branding_assets` — Era-6 reference enrichment + Security Free-Float Feed.
 - `security_short_interest` `(security_key, settlement_date)` and `security_short_volume` `(security_key, trade_date)` — Short Interest & Short Volume Feeds (dated history; `prices_equity` template minus split-rebase). Migration `2026-07-10T140000Z_short_interest_and_volume.ts` also admits the `security-short-interest` / `security-short-volume` / `security-short-volume-plan` feed_types and schedules their `pg_cron` jobs.
+- `ipo_events` `(ipo_key)` and `ipo_status_transitions` `(ipo_key, observed_at)` — IPO Feed. **NOT `security_key`-keyed** (rumor/pending IPOs have no security): `ipo_key = us_code ?? isin ?? ticker` synthesized at write, nullable best-effort `security_key` with **no FK**, upserted in place; the status lifecycle is preserved in the transition log. Migration `2026-07-10T150000Z_ipo_feed.ts` admits the `ipo-refresh` feed_type and schedules its daily `pg_cron`.
 
 ## Cross-references
 
