@@ -556,6 +556,58 @@ export interface IpoStatusTransitionsTable {
 }
 
 // ---------------------------------------------------------------------------
+// Rotation / Relative Rotation Graph (rotation-rrg.prd.md, E1) — layer-2 cache
+// of computed RRG coordinates. Per-symbol normalization (coords depend only on
+// symbol + benchmark), so the grain is per (benchmark, symbol, params_hash).
+// rrg_series_meta holds the raw-bars fingerprint + watermark that drives
+// append-vs-recompute. See 2026-07-11T150000Z_rotation_rrg.ts.
+// ---------------------------------------------------------------------------
+
+export interface RrgRsSeriesTable {
+  /** benchmark securities.key FK CASCADE (e.g. ARCX:SPY). */
+  benchmark_key: string;
+  /** plotted-symbol securities.key FK CASCADE (e.g. XNAS:XLK). */
+  symbol_key: string;
+  /** 'week' (CHECK). */
+  granularity: string;
+  /** hash of {L, m, k, smoothing, granularity} — partitions calibration changes. */
+  params_hash: string;
+  /** ISO-week close date. */
+  week_ending: Date;
+  /** close_symbol / close_benchmark. */
+  rs: number;
+  /** X coordinate (100-centered z-score of rs). */
+  rs_ratio: number;
+  /** Y coordinate (100-centered z-score of Δrs_ratio). */
+  rs_momentum: number;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface RrgSeriesMetaTable {
+  benchmark_key: string;
+  symbol_key: string;
+  granularity: string;
+  params_hash: string;
+  /** Warmup start of the raw-bars window the fingerprint is computed over. */
+  window_start_date: Date;
+  /** Last week_ending present in rrg_rs_series for this series. */
+  computed_through_week: Date;
+  /**
+   * Fingerprint of the raw prices_equity bars (symbol + benchmark) over
+   * [window_start_date, computed_through_week]. Recomputed on read; a mismatch
+   * means a retroactive split/backfill changed history → discard + recompute.
+   */
+  bars_fingerprint: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // Reference News (reference-news.prd.md, E1) — demand-driven Massive
 // /v2/reference/news cache. One article row (PK = Massive id) shared across
 // tickers; associated with ONLY the requested ticker; per-ticker sentiment;
@@ -801,6 +853,32 @@ export interface ScannerSettingsTable {
   updated_by: string;
 }
 
+/**
+ * ibkr_report_config — per-user, per-account IBKR Flex Web Service sync config
+ * (ibkr-flex-web-service-sync.prd.md, E3/D5). PK (owner, account); one-to-many
+ * per user. `query_id`/`token` are AES-256-GCM ciphertext (base64) — never
+ * plaintext in the DB. `status` ∈ {'ok','error'}; 'error' = halt-until-fixed.
+ * owner = '<uuid>.user' (strict CHECK, no FK — owner-scoped convention).
+ */
+export interface IbkrReportConfigTable {
+  owner: string;
+  account: string;
+  /** AES-256-GCM ciphertext (base64) of the Flex Web Service query id. */
+  query_id: string;
+  /** AES-256-GCM ciphertext (base64) of the Flex Web Service access token. */
+  token: string;
+  label: string | null;
+  enabled: Generated<boolean>;
+  status: Generated<string>;
+  last_synced_at: Date | null;
+  last_sync_status: string | null;
+  last_sync_error: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
 export interface Database {
   users: UsersTable;
   roles: RolesTable;
@@ -824,7 +902,10 @@ export interface Database {
   security_short_volume: SecurityShortVolumeTable;
   ipo_events: IpoEventsTable;
   ipo_status_transitions: IpoStatusTransitionsTable;
+  rrg_rs_series: RrgRsSeriesTable;
+  rrg_series_meta: RrgSeriesMetaTable;
   scanner_settings: ScannerSettingsTable;
+  ibkr_report_config: IbkrReportConfigTable;
   news_article: NewsArticleTable;
   news_article_ticker: NewsArticleTickerTable;
   news_article_insight: NewsArticleInsightTable;
