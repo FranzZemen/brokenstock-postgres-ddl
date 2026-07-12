@@ -1422,8 +1422,8 @@ export interface QueueTable {
 // `number`. Enum CHECKs mirrored as TS unions below.
 // ---------------------------------------------------------------------------
 
-/** financial-identity brokerage.ts:6 — the 4 brokerages. */
-export type Brokerage = 'Unknown' | 'Fidelity' | 'IBKR' | 'Schwab';
+/** financial-identity brokerage.ts:6 — the 5 brokerages. */
+export type Brokerage = 'Unknown' | 'Fidelity' | 'IBKR' | 'Schwab' | 'ETrade';
 
 /** financial-identity imports/file-import.ts:20-37 — file-import lifecycle (17 vals). */
 export type FileImportStatus =
@@ -1447,14 +1447,16 @@ export type FileImportStatus =
   | 'complete'
   | 'needs-attention';
 
-/** financial-identity imports/parser-name.ts:6 — the 6 parsers. */
+/** financial-identity imports/parser-name.ts:6 — the 8 parsers. */
 export type ParserName =
   | 'Standard JSON History Parser'
   | 'Fidelity CSV Parser'
   | 'Fidelity Multiple Account CSV Parser'
   | 'Fidelity Retirement Parser'
   | 'IBKR XML Flex Query Parser'
-  | 'Schwab Think Or Swim CSV Parser';
+  | 'Schwab Think Or Swim CSV Parser'
+  | 'ETrade CSV Parser'
+  | 'ETrade Morgan Stanley CSV Parser';
 
 /** financial-identity imports/brokerage-record.ts:13-18 — record lifecycle (5 vals). */
 export type BrokerageRecordStatus =
