@@ -62,6 +62,17 @@ export interface UsersTable {
   updated_at: Generated<Date>;
   created_by: string;
   updated_by: string;
+  /**
+   * Non-NULL once an admin full-data purge has been accepted for this user.
+   * The users row is deleted last, so this is set for the whole purge and is
+   * both the precondition guard (a second delete request 409s) and the source
+   * of the SPA's `deleting…` status.
+   */
+  purge_requested_at: Date | null;
+  /** Set by the purge worker when the job exhausts max_attempts and goes dead. */
+  purge_failed_at: Date | null;
+  /** Failure detail behind `purge_failed_at`; surfaced to the admin on the failed row. */
+  purge_error: string | null;
 }
 
 // ---------------------------------------------------------------------------
