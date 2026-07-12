@@ -157,3 +157,16 @@ migrated to prod_blue + dev_franz):
   (reserved for console epics E7/E8, not yet wired to actions).
 
 PRD: `~/dev/projects/doc/prd/fleet-admin-console.prd.md`.
+
+## User-purge schema (0.27.0)
+
+Admin user deletion added `users.purge_requested_at` / `purge_failed_at` / `purge_error` (so a row's
+`deleting…` / `delete-failed` status is a pure function of the users row) plus the
+`user:delete-user-capability` seed on `user-administrator-role`. **Audit carve-out:** `audit_chain_entry` and
+`fleet_admin_audit` are deliberately **NOT** purged — the chain is hash-chained + WORM (deleting a row breaks
+every later hash) and it hosts the erasure record itself. Every other owner-keyed table is purged via its
+package's `deleteByOwner(ownerUuid)`; the registry lives in `@franzzemen/users`
+(`src/project/purge/purge-registry.ts`) and its completeness scan **fails the build** when a migration here adds
+an `owner` / `user_uuid` / `owner_uuid` column without a matching registry entry.
+
+PRD: `~/dev/users/doc/prd/user-deletion.prd.md`.
