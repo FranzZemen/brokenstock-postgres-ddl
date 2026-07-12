@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@franzzemen/build-system": "^36.0.0",
-    "@franzzemen/safe-config": "^5.1.43"
+    "@franzzemen/safe-config": "^5.1.44"
   },
   "exports": {
     ".": {
