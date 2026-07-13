@@ -134,9 +134,6 @@ export interface SessionsTable {
   invalidated: Generated<boolean>;
   refresh_token: string;
   refresh_token_expires_at: Date;
-  /** JSONB; consumers narrow to their own EffectivePermissions type. LEGACY — being retired; new consumers read `features`. */
-  effective_permissions: Generated<unknown>;
-  permissions_stale: Generated<boolean>;
   /** JSONB plan-feature grant map; consumers narrow to their own Features type (`Record<slug, true | number>`). Resolved at login, hydrated on read. */
   features: Generated<unknown>;
   expires_at: Date;
@@ -1447,7 +1444,7 @@ export type FileImportStatus =
   | 'complete'
   | 'needs-attention';
 
-/** financial-identity imports/parser-name.ts:6 — the 8 parsers. */
+/** financial-identity imports/parser-name.ts:6 — the 9 parsers. */
 export type ParserName =
   | 'Standard JSON History Parser'
   | 'Fidelity CSV Parser'
@@ -1455,6 +1452,7 @@ export type ParserName =
   | 'Fidelity Retirement Parser'
   | 'IBKR XML Flex Query Parser'
   | 'Schwab Think Or Swim CSV Parser'
+  | 'Schwab Think Or Swim JSON Parser'
   | 'ETrade CSV Parser'
   | 'ETrade Morgan Stanley CSV Parser';
 
