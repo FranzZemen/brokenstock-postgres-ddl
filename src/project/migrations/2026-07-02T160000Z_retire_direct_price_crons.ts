@@ -31,44 +31,17 @@
  */
 
 import type {MigrationBuilder} from 'node-pg-migrate';
+import {scheduleVendorSyncCron, unscheduleVendorSyncCron} from '../vendor-sync-cron.js';
 
 const SYSTEM_OWNER = '00000000-0000-0000-0000-000000000000.user';
 const DIRECT_FEEDS = ['equity-prices', 'options-prices'] as const;
-const jobName = (feed: string): string => `vendor-sync-${feed}`;
-
 // gate ONLY on pg_cron presence in the current DB (robust to NULL cron.database_name).
-const ifCron = (body: string): string => `
-  DO $do$
-  BEGIN
-    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-      ${body}
-    END IF;
-  END
-  $do$;
-`;
-
-// The corrected, partial-index-qualified enqueue SQL (used only by down()'s restore).
-const enqueueSql = (feed: string): string => `
-  INSERT INTO vendor_sync_jobs (job_id, feed_type, scheduled_for_date, created_by, updated_by)
-  VALUES (gen_random_uuid()::text || '.vendor-sync-job', '${feed}', current_date, '${SYSTEM_OWNER}', '${SYSTEM_OWNER}')
-  ON CONFLICT (feed_type, scheduled_for_date) WHERE (feed_type <> 'equity-price-repair' AND NOT ad_hoc) DO NOTHING;
-`.trim();
-
 export const up = (pgm: MigrationBuilder): void => {
-  for (const feed of DIRECT_FEEDS) {
-    const name = jobName(feed);
-    pgm.sql(ifCron(`EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';`));
-  }
+  for (const feed of DIRECT_FEEDS) unscheduleVendorSyncCron(pgm, feed);
 };
 
 export const down = (pgm: MigrationBuilder): void => {
-  // Restore the direct current_date crons (Era-5 schedule) with the CORRECTED
-  // ON CONFLICT — the faithful inverse of retiring them.
-  for (const feed of DIRECT_FEEDS) {
-    const name = jobName(feed);
-    pgm.sql(ifCron(`
-      EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';
-      EXECUTE $sql$SELECT cron.schedule('${name}', '35 21 * * 1-5', $job$${enqueueSql(feed)}$job$)$sql$;
-    `));
-  }
+  // Restore the direct current_date crons (Era-5 schedule). scheduleVendorSyncCron emits
+  // the partial-index-qualified ON CONFLICT — the faithful inverse of retiring them.
+  for (const feed of DIRECT_FEEDS) scheduleVendorSyncCron(pgm, feed, '35 21 * * 1-5');
 };

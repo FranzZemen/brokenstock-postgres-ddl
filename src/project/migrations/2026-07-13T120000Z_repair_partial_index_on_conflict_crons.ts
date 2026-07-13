@@ -35,56 +35,28 @@ Once applied, the next 11:00 UTC planner fire revives 2026-07-10 on its own.
 */
 
 import type {MigrationBuilder} from 'node-pg-migrate';
-
-const SYSTEM_OWNER = '00000000-0000-0000-0000-000000000000.user';
+import {scheduleVendorSyncCron} from '../vendor-sync-cron.js';
 
 // The four crons registered on 2026-07-10 with the bare ON CONFLICT. Schedules are
-// carried through UNCHANGED — only the enqueue SQL is being corrected.
+// carried through UNCHANGED — only the enqueue SQL is being corrected, and it now comes
+// from the single shared definition in ../vendor-sync-cron.ts (added the same day, so
+// this class of bug cannot be re-introduced by copy-paste a third time).
 const BROKEN_JOBS: ReadonlyArray<{feed: string; schedule: string}> = [
-  {feed: 'security-float-refresh',    schedule: '0 16 * * 0'}, // Sun 16:00 UTC
-  {feed: 'security-short-interest',   schedule: '0 18 * * 0'}, // Sun 18:00 UTC, after float
+  {feed: 'security-float-refresh',     schedule: '0 16 * * 0'}, // Sun 16:00 UTC
+  {feed: 'security-short-interest',    schedule: '0 18 * * 0'}, // Sun 18:00 UTC, after float
   {feed: 'security-short-volume-plan', schedule: '0 11 * * *'}, // daily 11:00 UTC (~06:00-07:00 ET)
-  {feed: 'ipo-refresh',               schedule: '0 12 * * *'}, // daily 12:00 UTC
+  {feed: 'ipo-refresh',                schedule: '0 12 * * *'}, // daily 12:00 UTC
 ];
 
-const jobName = (feed: string): string => `vendor-sync-${feed}`;
-
-// Predicate-qualified ON CONFLICT — MUST name the partial index's predicate. See header.
-const enqueueSql = (feed: string): string => `
-  INSERT INTO vendor_sync_jobs (job_id, feed_type, scheduled_for_date, created_by, updated_by)
-  VALUES (gen_random_uuid()::text || '.vendor-sync-job', '${feed}', current_date, '${SYSTEM_OWNER}', '${SYSTEM_OWNER}')
-  ON CONFLICT (feed_type, scheduled_for_date) WHERE (feed_type <> 'equity-price-repair' AND NOT ad_hoc) DO NOTHING;
-`.trim();
-
-// The bare form these crons were registered with — restored by `down`.
-const bareEnqueueSql = (feed: string): string => `
-  INSERT INTO vendor_sync_jobs (job_id, feed_type, scheduled_for_date, created_by, updated_by)
-  VALUES (gen_random_uuid()::text || '.vendor-sync-job', '${feed}', current_date, '${SYSTEM_OWNER}', '${SYSTEM_OWNER}')
-  ON CONFLICT (feed_type, scheduled_for_date) DO NOTHING;
-`.trim();
-
-const scheduleJob = (pgm: MigrationBuilder, feed: string, sched: string, sql: (f: string) => string): void => {
-  const name = jobName(feed);
-  pgm.sql(`
-    DO $do$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-        RAISE NOTICE 'Skipping pg_cron ${name} on %: pg_cron not installed.', current_database();
-      ELSIF current_database() <> (SELECT setting FROM pg_settings WHERE name = 'cron.database_name') THEN
-        RAISE NOTICE 'Skipping pg_cron ${name} on %: jobs only registered in cron.database_name.', current_database();
-      ELSE
-        EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';
-        EXECUTE $sql$SELECT cron.schedule('${name}', '${sched}', $job$${sql(feed)}$job$)$sql$;
-      END IF;
-    END
-    $do$;
-  `);
-};
-
 export const up = (pgm: MigrationBuilder): void => {
-  for (const {feed, schedule} of BROKEN_JOBS) scheduleJob(pgm, feed, schedule, enqueueSql);
+  for (const {feed, schedule} of BROKEN_JOBS) scheduleVendorSyncCron(pgm, feed, schedule);
 };
 
 export const down = (pgm: MigrationBuilder): void => {
-  for (const {feed, schedule} of BROKEN_JOBS) scheduleJob(pgm, feed, schedule, bareEnqueueSql);
+  // Deliberately NOT a faithful inverse. The prior state of these four crons was SQL that
+  // aborts on every fire — a cron that cannot enqueue anything is not a state worth being
+  // able to return to, and re-planting the bare ON CONFLICT here would put the very
+  // template this migration exists to eliminate back into the tree. Reversing this
+  // migration leaves the crons correctly scheduled; the feed migrations that own them
+  // (2026-07-10T120000Z / T140000Z / T150000Z) remain their `down` path.
 };

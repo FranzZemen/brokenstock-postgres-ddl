@@ -47,6 +47,7 @@
  */
 
 import type {MigrationBuilder} from 'node-pg-migrate';
+import {scheduleVendorSyncCron, unscheduleVendorSyncCron} from '../vendor-sync-cron.js';
 
 const SYSTEM_OWNER = '00000000-0000-0000-0000-000000000000.user';
 
@@ -70,24 +71,6 @@ const FEED_TYPES_BEFORE = [
 ];
 const FEED_TYPES_AFTER = [...FEED_TYPES_BEFORE, 'equity-prices-plan', 'options-prices-plan'];
 
-const jobName = (feed: string): string => `vendor-sync-${feed}`;
-
-// IMPORTANT — the ON CONFLICT must name the PARTIAL-index predicate. The Admin
-// Batch Control migration (2026-06-20T150000Z) replaced the full unique index on
-// (feed_type, scheduled_for_date) with a PARTIAL one
-//   WHERE (feed_type <> 'equity-price-repair' AND NOT ad_hoc)
-// but the Era-5 pg_cron enqueue SQL kept the bare `ON CONFLICT (cols)`, which does
-// NOT match a partial index — so EVERY vendor-sync cron has failed since 2026-06-20
-// with "no unique or exclusion constraint matching the ON CONFLICT specification"
-// and no cron has enqueued a job since. This migration re-schedules ALL vendor-sync
-// crons with the predicate-qualified ON CONFLICT to restore them. (cron rows are
-// always ad_hoc=false + non-repair, so they fall inside the partial index.)
-const enqueueSql = (feed: string): string => `
-  INSERT INTO vendor_sync_jobs (job_id, feed_type, scheduled_for_date, created_by, updated_by)
-  VALUES (gen_random_uuid()::text || '.vendor-sync-job', '${feed}', current_date, '${SYSTEM_OWNER}', '${SYSTEM_OWNER}')
-  ON CONFLICT (feed_type, scheduled_for_date) WHERE (feed_type <> 'equity-price-repair' AND NOT ad_hoc) DO NOTHING;
-`.trim();
-
 // The other vendor-sync crons broken by the same partial-index bug — re-scheduled
 // here with the corrected enqueue SQL (schedules unchanged from Era-5/Era-6).
 const REPAIR_JOBS: ReadonlyArray<{feed: string; schedule: string}> = [
@@ -101,50 +84,18 @@ const REPAIR_JOBS: ReadonlyArray<{feed: string; schedule: string}> = [
 const checkSql = (feeds: string[]): string =>
   `feed_type IN (${feeds.map(f => `'${f}'`).join(', ')})`;
 
-const scheduleJob = (pgm: MigrationBuilder, feed: string, sched: string): void => {
-  const name = jobName(feed);
-  pgm.sql(`
-    DO $do$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-        RAISE NOTICE 'Skipping pg_cron ${name} on %: pg_cron not installed.', current_database();
-      ELSIF current_database() <> (SELECT setting FROM pg_settings WHERE name = 'cron.database_name') THEN
-        RAISE NOTICE 'Skipping pg_cron ${name} on %: jobs only registered in cron.database_name.', current_database();
-      ELSE
-        EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';
-        EXECUTE $sql$SELECT cron.schedule('${name}', '${sched}', $job$${enqueueSql(feed)}$job$)$sql$;
-      END IF;
-    END
-    $do$;
-  `);
-};
-
-const unscheduleJob = (pgm: MigrationBuilder, feed: string): void => {
-  const name = jobName(feed);
-  pgm.sql(`
-    DO $do$
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
-         AND current_database() = (SELECT setting FROM pg_settings WHERE name = 'cron.database_name') THEN
-        EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';
-      END IF;
-    END
-    $do$;
-  `);
-};
-
 export const up = (pgm: MigrationBuilder): void => {
   // 1. Admit the two plan feed_types.
   pgm.sql(`ALTER TABLE vendor_sync_jobs DROP CONSTRAINT IF EXISTS vendor_sync_jobs_feed_type_chk;`);
   pgm.sql(`ALTER TABLE vendor_sync_jobs ADD CONSTRAINT vendor_sync_jobs_feed_type_chk CHECK (${checkSql(FEED_TYPES_AFTER)});`);
 
   // 2. Retire the direct current_date price crons; schedule the planners.
-  for (const feed of RETIRED_DIRECT_FEEDS) unscheduleJob(pgm, feed);
-  for (const {feed, schedule} of PLAN_JOBS) scheduleJob(pgm, feed, schedule);
+  for (const feed of RETIRED_DIRECT_FEEDS) unscheduleVendorSyncCron(pgm, feed);
+  for (const {feed, schedule} of PLAN_JOBS) scheduleVendorSyncCron(pgm, feed, schedule);
 
   // 2b. Re-schedule the OTHER vendor-sync crons with the corrected (partial-index)
   // ON CONFLICT — they have all been failing to enqueue since 2026-06-20.
-  for (const {feed, schedule} of REPAIR_JOBS) scheduleJob(pgm, feed, schedule);
+  for (const {feed, schedule} of REPAIR_JOBS) scheduleVendorSyncCron(pgm, feed, schedule);
 
   // 3. Seed coverage-row shells (cold start; E10 resets explicitly).
   pgm.sql(`
@@ -157,8 +108,8 @@ export const up = (pgm: MigrationBuilder): void => {
 
 export const down = (pgm: MigrationBuilder): void => {
   // Unschedule the planners; restore the direct 21:35 UTC current_date crons.
-  for (const {feed} of PLAN_JOBS) unscheduleJob(pgm, feed);
-  for (const feed of RETIRED_DIRECT_FEEDS) scheduleJob(pgm, feed, '35 21 * * 1-5');
+  for (const {feed} of PLAN_JOBS) unscheduleVendorSyncCron(pgm, feed);
+  for (const feed of RETIRED_DIRECT_FEEDS) scheduleVendorSyncCron(pgm, feed, '35 21 * * 1-5');
 
   pgm.sql(`DELETE FROM vendor_feed_coverage WHERE feed_type IN ('equity-prices', 'options-prices');`);
 

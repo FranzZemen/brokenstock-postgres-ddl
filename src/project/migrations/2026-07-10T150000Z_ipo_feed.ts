@@ -37,6 +37,7 @@ Bumps MIN_SCHEMA_VERSION = 2026-07-10T150000Z.
 */
 
 import type {MigrationBuilder} from 'node-pg-migrate';
+import {scheduleVendorSyncCron, unscheduleVendorSyncCron} from '../vendor-sync-cron.js';
 
 const SYSTEM_OWNER = '00000000-0000-0000-0000-000000000000.user';
 const USER_FMT = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.user$';
@@ -59,48 +60,8 @@ const FEED_TYPES_BEFORE = [
 ];
 const FEED_TYPES_AFTER = [...FEED_TYPES_BEFORE, IPO_FEED];
 
-const jobName = (feed: string): string => `vendor-sync-${feed}`;
-
 const checkSql = (feeds: string[]): string =>
   `feed_type IN (${feeds.map((f) => `'${f}'`).join(', ')})`;
-
-const enqueueSql = (feed: string): string => `
-  INSERT INTO vendor_sync_jobs (job_id, feed_type, scheduled_for_date, created_by, updated_by)
-  VALUES (gen_random_uuid()::text || '.vendor-sync-job', '${feed}', current_date, '${SYSTEM_OWNER}', '${SYSTEM_OWNER}')
-  ON CONFLICT (feed_type, scheduled_for_date) DO NOTHING;
-`.trim();
-
-const schedule = (pgm: MigrationBuilder, feed: string, sched: string): void => {
-  const name = jobName(feed);
-  pgm.sql(`
-    DO $do$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-        RAISE NOTICE 'Skipping pg_cron ${name} on %: pg_cron not installed.', current_database();
-      ELSIF current_database() <> (SELECT setting FROM pg_settings WHERE name = 'cron.database_name') THEN
-        RAISE NOTICE 'Skipping pg_cron ${name} on %: jobs only registered in cron.database_name.', current_database();
-      ELSE
-        EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';
-        EXECUTE $sql$SELECT cron.schedule('${name}', '${sched}', $job$${enqueueSql(feed)}$job$)$sql$;
-      END IF;
-    END
-    $do$;
-  `);
-};
-
-const unschedule = (pgm: MigrationBuilder, feed: string): void => {
-  const name = jobName(feed);
-  pgm.sql(`
-    DO $do$
-    BEGIN
-      IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
-         AND current_database() = (SELECT setting FROM pg_settings WHERE name = 'cron.database_name') THEN
-        EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';
-      END IF;
-    END
-    $do$;
-  `);
-};
 
 export const up = (pgm: MigrationBuilder): void => {
   pgm.sql(`
@@ -162,11 +123,11 @@ export const up = (pgm: MigrationBuilder): void => {
   pgm.sql(`ALTER TABLE vendor_sync_jobs DROP CONSTRAINT IF EXISTS vendor_sync_jobs_feed_type_chk;`);
   pgm.sql(`ALTER TABLE vendor_sync_jobs ADD CONSTRAINT vendor_sync_jobs_feed_type_chk CHECK (${checkSql(FEED_TYPES_AFTER)});`);
 
-  schedule(pgm, IPO_FEED, IPO_SCHEDULE);
+  scheduleVendorSyncCron(pgm, IPO_FEED, IPO_SCHEDULE);
 };
 
 export const down = (pgm: MigrationBuilder): void => {
-  unschedule(pgm, IPO_FEED);
+  unscheduleVendorSyncCron(pgm, IPO_FEED);
 
   pgm.sql(`ALTER TABLE vendor_sync_jobs DROP CONSTRAINT IF EXISTS vendor_sync_jobs_feed_type_chk;`);
   pgm.sql(`ALTER TABLE vendor_sync_jobs ADD CONSTRAINT vendor_sync_jobs_feed_type_chk CHECK (${checkSql(FEED_TYPES_BEFORE)});`);

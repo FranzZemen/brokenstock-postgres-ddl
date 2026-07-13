@@ -30,9 +30,8 @@ BEFORE UPDATE trigger overwrites whatever the caller passes.
   silently overridden by the trigger.
 - `Date` (plain) for application-managed TIMESTAMPTZ columns (`start_at`,
   `expires_at`, `refresh_token_expires_at`) — callers always provide.
-- `unknown` for `effective_permissions JSONB` — consumers narrow to their
-  own `EffectivePermissions` type via kysely's `Json` helpers or by typing
-  the SELECT projection.
+- `unknown` for `features JSONB` — consumers narrow to their own `Features`
+  type via kysely's `Json` helpers or by typing the SELECT projection.
 - `string` for every `TEXT` column. C1 D2 uses TEXT PKs with CHECK regex; no
   native UUID type.
 

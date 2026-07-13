@@ -47,6 +47,15 @@ const FEED_TYPES_BEFORE = [
 
 const jobName = (feed: string): string => `vendor-sync-${feed}`;
 
+// ⚠️ HISTORICAL — DO NOT COPY THIS AS A TEMPLATE.
+// The bare `ON CONFLICT (cols)` below was CORRECT when this migration was written: the
+// dedupe index was a FULL unique index then. Since 2026-06-20T150000Z it is PARTIAL, and
+// a bare ON CONFLICT no longer matches it — every cron carrying this form aborts on each
+// fire ("no unique or exclusion constraint matching the ON CONFLICT specification").
+// The crons registered here were re-scheduled with the corrected SQL by
+// 2026-07-01T150000Z, so this file's form is inert; it is left intact only because it is
+// what actually ran at the time.
+// NEW cron migrations MUST use `scheduleVendorSyncCron` from ../vendor-sync-cron.ts.
 const enqueueSql = (feed: string): string => `
   INSERT INTO vendor_sync_jobs (job_id, feed_type, scheduled_for_date, created_by, updated_by)
   VALUES (gen_random_uuid()::text || '.vendor-sync-job', '${feed}', current_date, '${SYSTEM_OWNER}', '${SYSTEM_OWNER}')
