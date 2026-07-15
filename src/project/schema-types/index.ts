@@ -852,6 +852,44 @@ export interface TickerDataRatiosTable {
   updated_by: string;
 }
 
+/**
+ * Append-only dated history behind the ratio charts — the ledger half of the
+ * cache/ledger split with the latest-only `ticker_data_ratios` above. PK is
+ * (ticker, as_of_date): bare-ticker, no FK to securities, because 11.7% of the
+ * vendor's ratio rows resolve to no security and Massive's ratios are
+ * company-level rather than listing-level. See the 2026-07-14T120000Z migration.
+ */
+export interface TickerDataRatiosHistoryTable {
+  ticker: string;
+  as_of_date: Date;
+  symbol: string;
+  cik: string | null;
+  close_price: number;
+  average_volume: number | null;
+  market_cap: number | null;
+  enterprise_value: number | null;
+  earnings_per_share: number | null;
+  price_to_earnings: number | null;
+  price_to_book: number | null;
+  price_to_sales: number | null;
+  price_to_cash_flow: number | null;
+  price_to_free_cash_flow: number | null;
+  ev_to_sales: number | null;
+  ev_to_ebitda: number | null;
+  return_on_assets: number | null;
+  return_on_equity: number | null;
+  current_ratio: number | null;
+  quick_ratio: number | null;
+  cash_ratio: number | null;
+  debt_to_equity: number | null;
+  dividend_yield: number | null;
+  free_cash_flow: number | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
 // ---------------------------------------------------------------------------
 // Database — pass as the kysely generic.
 // ---------------------------------------------------------------------------
@@ -988,6 +1026,7 @@ export interface Database {
   bz_news_article_ticker: BzNewsArticleTickerTable;
   security_branding_assets: SecurityBrandingAssetsTable;
   ticker_data_ratios: TickerDataRatiosTable;
+  ticker_data_ratios_history: TickerDataRatiosHistoryTable;
   smoke_events: SmokeEventsTable;
   worker_jobs: WorkerJobsTable;
   vendor_sync_jobs: VendorSyncJobsTable;
