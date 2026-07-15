@@ -623,71 +623,6 @@ export interface RrgSeriesMetaTable {
 }
 
 // ---------------------------------------------------------------------------
-// Momentum Structural Analysis (momentum-msa.prd.md, E1) — an append-only log of
-// SIGNAL STATE TRANSITIONS. The momentum series itself is NOT stored: it is a few
-// hundred points of arithmetic over bars prices_equity already caches, and storing
-// a derivative of those bars would go silently stale on a retroactive split-rebase
-// (D12). What cannot be recomputed is WHEN YOU WERE TOLD — hence a transition log,
-// not a snapshot. See 2026-07-13T180000Z_momentum_msa.ts.
-// ---------------------------------------------------------------------------
-
-export interface MsaCalibrationTable {
-  /** securities.key FK CASCADE. */
-  security_key: string;
-  /** 'annual' | 'quarterly' (CHECK). */
-  study: string;
-  /**
-   * The FROZEN P&F box, in percent of the stepped mean. Calibrated once from the
-   * symbol's own momentum dispersion and then never re-derived: a P&F chart is
-   * append-only, and a drifting box silently rewrites its past (D7).
-   */
-  box_size_pct: number;
-  /** Boxes of counter-move needed to start a new column. Oliver: 3. */
-  reversal: Generated<number>;
-  /** True when the box was set by hand (E15). A manual box is never auto-recalculated. */
-  manual_override: Generated<boolean>;
-  /** Audit: how many monthly momentum bars the auto-calibration measured. */
-  calibrated_from_months: number | null;
-  /** Audit: the last bar the auto-calibration saw. */
-  calibrated_through: Date | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-  created_by: string;
-  updated_by: string;
-}
-
-export interface MsaSignalTable {
-  /** securities.key FK CASCADE (e.g. ARCX:GLD). */
-  security_key: string;
-  /** 'annual' | 'quarterly' (CHECK). */
-  study: string;
-  /** Hash of {barGranularity, meanGranularity, meanLength, boxSizePct, reversal}. */
-  params_hash: string;
-  /** First date this state was observed. Part of the PK — one row per transition. */
-  observed_from: Date;
-  /** NULL while this is the CURRENT state (unique partial index enforces one open row). */
-  observed_to: Date | null;
-  /** One of the 7 MSA states (CHECK). NO_STRUCTURE is a legitimate answer, not a gap. */
-  state: string;
-  /** 'High' | 'Medium' | 'Watch' | 'None' — graded across studies (CHECK). */
-  conviction: string | null;
-  /** The structure the state is keyed to: {kind, levelPct, touches, status}. */
-  keyed_to: unknown | null;
-  /** The momentum level being defended/attacked, in percent off the stepped mean. */
-  level_pct: number | null;
-  /** That level inverted to a PRICE for the period — the actionable output (D11). */
-  trigger_price: number | null;
-  /** A horizontal AND a trendline broke together — Oliver's "potent combination". */
-  coincident: Generated<boolean>;
-  /** NULL until the SNS transition notification is sent (D15). */
-  notified_at: Date | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-  created_by: string;
-  updated_by: string;
-}
-
-// ---------------------------------------------------------------------------
 // Reference News (reference-news.prd.md, E1) — demand-driven Massive
 // /v2/reference/news cache. One article row (PK = Massive id) shared across
 // tickers; associated with ONLY the requested ticker; per-ticker sentiment;
@@ -1022,8 +957,6 @@ export interface Database {
   ipo_status_transitions: IpoStatusTransitionsTable;
   rrg_rs_series: RrgRsSeriesTable;
   rrg_series_meta: RrgSeriesMetaTable;
-  msa_calibration: MsaCalibrationTable;
-  msa_signal: MsaSignalTable;
   scanner_settings: ScannerSettingsTable;
   ibkr_report_config: IbkrReportConfigTable;
   news_article: NewsArticleTable;
