@@ -199,6 +199,14 @@ export interface SecuritiesTable {
   currency: string;
   description: string | null;
   country_code: string;
+  /**
+   * Oldest date the price vendor (Massive) actually has for this security — the
+   * backward-edge coverage watermark read by `EquityPriceTrustedApi.getDeepHistory`
+   * (mirror of `prices_equity.adjusted_through_date`). NULL = vendor floor never
+   * probed; set on the first deep pull that returns bars later than requested.
+   * See financial-data/doc/prd/deep-history-watermark.prd.md.
+   */
+  vendor_earliest_date: Date | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
