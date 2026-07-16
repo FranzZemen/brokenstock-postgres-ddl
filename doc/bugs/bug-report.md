@@ -20,7 +20,7 @@ later: `time-to-start = fix_started - reported`, `fix duration = fixed - fix_sta
 | ID | Title | Reported | Fix Started | Resolved | Status | Owner repo |
 |----|-------|----------|-------------|----------|--------|------------|
 | BUG-001 | IBKR import dies + silently reverts on CAD transaction (currency CHECK too narrow) | 2026-07-11 | 2026-07-11 | 2026-07-11 | fixed | brokenstock-postgres-ddl |
-| BUG-002 | `ibkr-sync-batch` pg_cron fails every run — `text = uuid` type mismatch in user_roles join; daily Flex sync has never enqueued | 2026-07-15 | 2026-07-15 | — | investigating | brokenstock-postgres-ddl |
+| BUG-002 | `ibkr-sync-batch` pg_cron fails every run — `text = uuid` type mismatch in user_roles join; daily Flex sync has never enqueued | 2026-07-15 | 2026-07-15 | 2026-07-15 | fixed | brokenstock-postgres-ddl |
 
 ## BUG-001: IBKR import dies + silently reverts on CAD transaction (currency CHECK too narrow)
 
@@ -91,8 +91,8 @@ Follow-ups tracked separately (NOT part of this entry's resolution):
 
 **Reported:**    2026-07-15T21:16:00-04:00
 **Fix started:** 2026-07-15T21:46:14-04:00
-**Fixed:**       TBD
-**Status:** investigating
+**Fixed:**       2026-07-15T22:06:42-04:00
+**Status:** fixed
 
 ### Report
 User reported the IBKR daily Flex Query sync "doesn't seem like it's been
@@ -109,5 +109,24 @@ statement before any job is inserted. The daily sync has therefore NEVER enqueue
 since the migration deployed 2026-07-11. Manual sync (POST /ibkr/sync) is
 unaffected — it goes through the TS `submitJob` path, not this SQL.
 
+Verification exposed a SECOND, independent defect in the same join: `user_roles.user_uuid`
+stores the FULL owner string (`<uuid>.user`), but the join keyed on
+`split_part(c.owner, '.', 1)` (the `.user`-stripped bare uuid) → the join never matched
+→ every enqueued job would carry `ownerRoles: []`. The imports-worker `import.ibkr-fetch`
+consumer runs the fetch AS the user and needs the user's roles to pass hasAccess, so a
+role-less enqueue would fail authorization — the sync would still be broken with a
+different signature. Root of both defects: the original author assumed a `uuid`-typed
+column keyed by bare uuid; it is `text` keyed by `<uuid>.user`.
+
 ### Fix
-TBD
+Two superseding cron re-schedule migrations (each re-`cron.schedule`s in place; no schema
+change, no MIN_SCHEMA_VERSION bump, no worker redeploy):
+- Part 1 — `2026-07-16T120000Z_ibkr_sync_batch_cron_fix.ts` (DDL 0.30.4): drop the
+  `::uuid` cast (`text = text`).
+- Part 2 — `2026-07-16T130000Z_ibkr_sync_batch_cron_join_fix.ts` (DDL 0.30.5): join on the
+  full owner string (`ur.user_uuid = c.owner`).
+Published via `abs.ddl-publish nonprod`; applied via `abs.migrate` to dev_franz (test gate)
+then prod_blue — both `MIGRATE_SUCCESS`. Verified read-only on prod_blue: cron command now
+contains `ur.user_uuid = c.owner`, no `split_part` join, no `::uuid` cast, active=true; the
+cfg CTE resolves and returns all 22 roles for the enabled U15843096 config. Next scheduled
+run (`0 11 * * 1-5` UTC = 07:00 EDT) will be the first live enqueue.
