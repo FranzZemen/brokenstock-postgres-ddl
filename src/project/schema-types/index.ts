@@ -102,6 +102,30 @@ export interface UserRolesTable {
 }
 
 // ---------------------------------------------------------------------------
+// user_security_roles (M:N join) — 2026-07-16T140000Z_user_security_roles
+//
+// The NEW security model's assignment table (@franzzemen/endpoint-identity:
+// SecurityRole = 'user' | 'administrator'). Parallel to user_roles, which is
+// untouched and still live; see the migration header for why there is no
+// parent table and no FK on security_role — the vocabulary is code-owned.
+// ---------------------------------------------------------------------------
+
+export interface UserSecurityRolesTable {
+  user_uuid: string;
+  /**
+   * A `SecurityRole` from @franzzemen/endpoint-identity. Typed `string` rather
+   * than the union deliberately: the DDL package must not depend on the
+   * security model, and Kysely types describe what the column holds, not what
+   * is allowed into it. Writers validate with `isSecurityRole`.
+   */
+  security_role: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // user_applications
 // ---------------------------------------------------------------------------
 
@@ -936,6 +960,7 @@ export interface Database {
   users: UsersTable;
   roles: RolesTable;
   user_roles: UserRolesTable;
+  user_security_roles: UserSecurityRolesTable;
   user_applications: UserApplicationsTable;
   sessions: SessionsTable;
   role_capabilities: RoleCapabilitiesTable;
