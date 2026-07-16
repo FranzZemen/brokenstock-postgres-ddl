@@ -20,6 +20,7 @@ later: `time-to-start = fix_started - reported`, `fix duration = fixed - fix_sta
 | ID | Title | Reported | Fix Started | Resolved | Status | Owner repo |
 |----|-------|----------|-------------|----------|--------|------------|
 | BUG-001 | IBKR import dies + silently reverts on CAD transaction (currency CHECK too narrow) | 2026-07-11 | 2026-07-11 | 2026-07-11 | fixed | brokenstock-postgres-ddl |
+| BUG-002 | `ibkr-sync-batch` pg_cron fails every run — `text = uuid` type mismatch in user_roles join; daily Flex sync has never enqueued | 2026-07-15 | 2026-07-15 | — | investigating | brokenstock-postgres-ddl |
 
 ## BUG-001: IBKR import dies + silently reverts on CAD transaction (currency CHECK too narrow)
 
@@ -85,3 +86,28 @@ Follow-ups tracked separately (NOT part of this entry's resolution):
 - Observation: IBKR "transferred cash in/out" (deposit/withdrawal) transactions are
   keyed `XXXX:{account}` (account number used as security symbol), so they spuriously
   land in Pending Instrument Identification. Separate IBKR-parser issue. Pending triage.
+
+## BUG-002: ibkr-sync-batch pg_cron fails every run (text = uuid type mismatch)
+
+**Reported:**    2026-07-15T21:16:00-04:00
+**Fix started:** 2026-07-15T21:46:14-04:00
+**Fixed:**       TBD
+**Status:** investigating
+
+### Report
+User reported the IBKR daily Flex Query sync "doesn't seem like it's been
+running." The `ibkr-sync-batch` pg_cron job IS scheduled and active on prod_blue
+(`0 11 * * 1-5` UTC), but `cron.job_run_details` shows every run failing:
+`ERROR: operator does not exist: text = uuid`. Runs 2026-07-13/14/15 all identical.
+
+### Findings
+The cron's enqueue SQL (`migrations/2026-07-11T150000Z_ibkr_sync_batch_cron.ts:44`)
+joins `LEFT JOIN user_roles ur ON ur.user_uuid = (split_part(c.owner, '.', 1))::uuid`.
+`user_roles.user_uuid` is a `text` column (confirmed via information_schema on
+prod_blue), so `text = uuid` has no operator and Postgres aborts the whole cron
+statement before any job is inserted. The daily sync has therefore NEVER enqueued
+since the migration deployed 2026-07-11. Manual sync (POST /ibkr/sync) is
+unaffected — it goes through the TS `submitJob` path, not this SQL.
+
+### Fix
+TBD
