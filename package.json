@@ -1,6 +1,6 @@
 {
   "name": "@franzzemen/brokenstock-postgres-ddl",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "description": "Canonical home of all Brokenstock-specific Postgres schema migrations across Eras",
   "homepage": "https://github.com/FranzZemen/brokenstock-postgres-ddl#readme",
   "bugs": {
