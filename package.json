@@ -1,6 +1,6 @@
 {
   "name": "@franzzemen/brokenstock-postgres-ddl",
-  "version": "0.41.2",
+  "version": "0.41.3",
   "description": "Canonical home of all Brokenstock-specific Postgres schema migrations across Eras",
   "homepage": "https://github.com/FranzZemen/brokenstock-postgres-ddl#readme",
   "bugs": {
@@ -17,7 +17,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@franzzemen/build-system": "^36.0.0",
     "@franzzemen/safe-config": "^5.1.44"
   },
   "exports": {
@@ -37,6 +36,7 @@
     }
   },
   "devDependencies": {
+    "@franzzemen/build-system": "^36.0.0",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.1.1",
