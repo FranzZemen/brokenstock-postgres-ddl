@@ -42,9 +42,9 @@
     "@types/node": "^26.1.1",
     "@types/pg": "^8.20.0",
     "chai": "^6.2.2",
-    "kysely": "^0.29.3",
+    "kysely": "^0.29.4",
     "mocha": "^11.7.6",
-    "node-pg-migrate": "^8.0.4",
+    "node-pg-migrate": "^9.0.0",
     "typescript": "^7.0.2"
   }
 }
