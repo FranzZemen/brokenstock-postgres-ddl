@@ -75,39 +75,13 @@ export interface UsersTable {
 }
 
 // ---------------------------------------------------------------------------
-// roles
-// ---------------------------------------------------------------------------
-
-export interface RolesTable {
-  /** Role slug (e.g. 'user-administrator-role') — PK and FK target. */
-  name: string;
-  description: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-  created_by: string;
-  updated_by: string;
-}
-
-// ---------------------------------------------------------------------------
-// user_roles (M:N join)
-// ---------------------------------------------------------------------------
-
-export interface UserRolesTable {
-  user_uuid: string;
-  role_name: string;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-  created_by: string;
-  updated_by: string;
-}
-
-// ---------------------------------------------------------------------------
 // user_security_roles (M:N join) — 2026-07-16T140000Z_user_security_roles
 //
-// The NEW security model's assignment table (@franzzemen/endpoint-identity:
-// SecurityRole = 'user' | 'administrator'). Parallel to user_roles, which is
-// untouched and still live; see the migration header for why there is no
-// parent table and no FK on security_role — the vocabulary is code-owned.
+// The security model's assignment table (@franzzemen/endpoint-identity:
+// SecurityRole = 'user' | 'administrator'). The legacy roles / user_roles /
+// role_capabilities tables were dropped by the legacy-authz-teardown PRD; see
+// the migration header for why there is no parent table and no FK on
+// security_role — the vocabulary is code-owned.
 // ---------------------------------------------------------------------------
 
 export interface UserSecurityRolesTable {
@@ -160,21 +134,6 @@ export interface SessionsTable {
   /** JSONB plan-feature grant map; consumers narrow to their own Features type (`Record<slug, true | number>`). Resolved at login, hydrated on read. */
   features: Generated<unknown>;
   expires_at: Date;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-  created_by: string;
-  updated_by: string;
-}
-
-// ---------------------------------------------------------------------------
-// role_capabilities
-// ---------------------------------------------------------------------------
-
-export interface RoleCapabilitiesTable {
-  /** roles.name FK CASCADE. */
-  role_name: string;
-  /** Free-form capability string (the closed set lives in code). */
-  capability: string;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
@@ -958,12 +917,9 @@ export interface IbkrReportConfigTable {
 
 export interface Database {
   users: UsersTable;
-  roles: RolesTable;
-  user_roles: UserRolesTable;
   user_security_roles: UserSecurityRolesTable;
   user_applications: UserApplicationsTable;
   sessions: SessionsTable;
-  role_capabilities: RoleCapabilitiesTable;
   securities: SecuritiesTable;
   security_aliases: SecurityAliasesTable;
   stock_splits: StockSplitsTable;
