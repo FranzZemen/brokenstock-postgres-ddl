@@ -1565,6 +1565,13 @@ export interface BrokerageFileImportsTable {
   /** Parse-stage count of transactions dropped by the virtual account's
    *  start_at filter (economic date < start-of-day ET). */
   metric_start_at_dropped_count: number | null;
+  /** FileImportMetrics.parserAnomalyCount — rows the parser recognised but did not
+   *  convert. NULL = not recorded (pre-2026-07-18 imports), which is NOT zero. */
+  metric_parser_anomaly_count: number | null;
+  /** ParserAnomaly[] verbatim: {kind, value, sourceId, message}. The DETAIL behind the
+   *  count — a bare number does not tell an operator WHAT was discarded. NOTE some
+   *  kinds DID import and are flagged for verification rather than dropped. */
+  parser_anomalies: unknown | null;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
