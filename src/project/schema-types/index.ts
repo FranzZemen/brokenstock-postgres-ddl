@@ -2063,7 +2063,13 @@ export interface SubTradeYieldUnitsTable {
   gain: string;
   mtm_price_at_boundary: string | null;
   days: number;
-  yield: string;
+  /**
+   * NULL when the unit is CAPITAL-LESS (`denominator = 0`) — real cash with no
+   * derivable capital base, so gain / denominator is undefined. Storing 0 there
+   * would assert "broke even", a different and false claim.
+   * See migration 2026-07-18T140000Z / sub-trade-yield-scoping.prd.md D19.
+   */
+  yield: string | null;
   fees_and_commissions: string;
   explanation: string | null;
   started_by: string | null;
