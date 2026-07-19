@@ -2077,6 +2077,8 @@ export interface SubTradeYieldUnitsTable {
    * See migration 2026-07-18T140000Z / sub-trade-yield-scoping.prd.md D19.
    */
   yield: string | null;
+  /** PASSIVE component of `gain` (dividends/RoC/interest). NULL = no income. E10b. */
+  income_gain: string | null;
   fees_and_commissions: string;
   explanation: string | null;
   started_by: string | null;
