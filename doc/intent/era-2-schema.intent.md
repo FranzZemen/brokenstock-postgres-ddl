@@ -75,9 +75,35 @@ The `market_calendar` and `market_calendar_holidays` tables have no FKs (MIC is 
 - **Numeric precision on prices.** All OHLCV columns and options greeks are `DOUBLE PRECISION`, matching vendor JS-number source fidelity. `NUMERIC(p, s)` would be appropriate for an internal pricing engine doing arithmetic; Brokenstock's yield/gain compute math runs on its own working types elsewhere, so the source fidelity choice is the cheap one.
 - **Indexes.** `securities` carries 5 secondary indexes (`ticker`, `mic`, `asset_class`, `currency`, `country_code`) mirroring DDB's 5 GSIs. `security_aliases` carries one secondary index `(security_key, alias_type)` mirroring the `key-index` GSI. `prices_options` carries `UNIQUE INDEX (cid)`. All other tables are PK-only; secondary indexes can be added later when a real query pattern justifies one. Per `[[feedback-preserve-ddb-access-patterns]]`.
 
-## NOTIFY plumbing — the cache-coherence substrate
+## NOTIFY plumbing — the cache-coherence substrate ⚠️ RETIRED 2026-07-19
 
-Era 2 ships the **Postgres LISTEN/NOTIFY** half of the L4/L5 cache architecture (intent doc 0.5.0, Front 3). The L5 domain cache services (Era 2 C3) subscribe to per-entity channels and evict cached entries when the writer commits.
+> 🔴 **ALL SIX TRIGGERS BELOW HAVE BEEN DROPPED.** They are documented here as the
+> historical record of Era 2; **none of this describes the running schema.**
+>
+> The L5 domain cache services that were to subscribe were built (Era 2 C3) but **never
+> started in any process**, so these six channels published into the void from 2026-06-01
+> to 2026-07-19. Dropped by `2026-07-19T120000Z_retire_l5_notify_triggers.ts`, which also
+> drops the six `notify_*` functions and carries a `down` restoring the exact
+> pre-retirement state (including the Era-5 GUC-guarded equity variant).
+>
+> Re-evaluated per domain, **none wanted invalidation-based caching**: aliases' hot read is
+> `consistentRead=true` (a cache there is a correctness regression), the market calendar is
+> already cached in-process by `TradingCalendar`, splits want a batch read, equity prices
+> moved to a consumer-sited short-TTL burst cache, options had no reader at all.
+>
+> **Cost was not the reason.** `pg_notify` into a channel with no listener is an in-memory
+> append to the transaction's pending-notify list. The ~0.85 ms/row figure asserted in
+> `2026-06-12T160000Z_era_5_equity_price_notify_suppress_guard.ts` was an **attribution,
+> not a measurement** — and the nightly equity feed had been pushing the full
+> ~12,000-security universe through the same unguarded trigger every night without
+> complaint.
+>
+> **Still live, unaffected:** `vendor-sync-job-enqueued` (`vendor_sync_jobs` INSERT),
+> `chunk_ready:<job_type>` (pg-queue / pg-chunked-jobs). Those have real subscribers.
+>
+> See `projects/doc/prd/l5-cache-tier-retirement.prd.md`.
+
+Era 2 shipped the **Postgres LISTEN/NOTIFY** half of the L4/L5 cache architecture (intent doc 0.5.0, Front 3). The L5 domain cache services (Era 2 C3) were to subscribe to per-entity channels and evict cached entries when the writer commits. They never did.
 
 Six per-entity NOTIFY trigger functions, each firing `AFTER INSERT OR UPDATE OR DELETE` on its data-bearing table, with pipe-joined composite-key payloads:
 
@@ -92,7 +118,7 @@ Six per-entity NOTIFY trigger functions, each firing `AFTER INSERT OR UPDATE OR 
 
 `stock_splits_coverage` and `market_calendar` (metadata) do NOT emit NOTIFY — they hold operational state that no L5 cache consumes.
 
-Payloads stay well under Postgres' 8KB NOTIFY cap. Consumers parse on receipt and call their L4 LRU's `.invalidate(payload)`.
+Payloads stayed well under Postgres' 8KB NOTIFY cap. Consumers were to parse on receipt and call their L4 LRU's `.invalidate(payload)` — no consumer was ever wired.
 
 ## MIN_SCHEMA_VERSION
 
