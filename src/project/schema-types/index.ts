@@ -570,8 +570,13 @@ export interface RrgRsSeriesTable {
   granularity: string;
   /** hash of {L, m, k, smoothing, granularity} — partitions calibration changes. */
   params_hash: string;
-  /** ISO-week close date. */
-  week_ending: Date;
+  /**
+   * ISO-week MONDAY anchor (the bucket's identity), NOT the week's close date.
+   * Coordinates are computed from the week's Friday close; a human-facing label
+   * wants this + 4 days. Renamed from `week_ending` on 2026-07-19 — see
+   * 2026-07-19T140000Z_rrg_week_starting_rename.ts.
+   */
+  week_starting: Date;
   /** close_symbol / close_benchmark. */
   rs: number;
   /** X coordinate (100-centered z-score of rs). */
@@ -591,7 +596,7 @@ export interface RrgSeriesMetaTable {
   params_hash: string;
   /** Warmup start of the raw-bars window the fingerprint is computed over. */
   window_start_date: Date;
-  /** Last week_ending present in rrg_rs_series for this series. */
+  /** Last week_starting present in rrg_rs_series for this series. */
   computed_through_week: Date;
   /**
    * Fingerprint of the raw prices_equity bars (symbol + benchmark) over
