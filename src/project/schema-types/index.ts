@@ -496,6 +496,62 @@ export interface SecurityShortVolumeTable {
 }
 
 // ---------------------------------------------------------------------------
+// Daily Indicators (daily-indicators-scanner.prd.md, E2) — one row per (security,
+// trading session), computed nightly from prices_equity. DATE-LEADING primary key
+// `(closing_date, security_key)`: the dominant read is "every security matching a
+// predicate on date D", which a security-leading key would make a full scan. A
+// secondary index `(security_key, closing_date)` keeps per-security history cheap.
+// Every indicator column is nullable and warms up independently (rsi_14 ~30 bars,
+// sma_200 200, high_52w 252); `bars_in_window` says how much history backed the row.
+// ---------------------------------------------------------------------------
+
+export interface SecurityDailyIndicatorsTable {
+  /** Trading session the indicators describe. Leading PK column. */
+  closing_date: Date;
+  /** securities.key FK CASCADE. */
+  security_key: string;
+  /** Denormalized from prices_equity so a scan needs no join. */
+  close: number | null;
+  volume: number | null;
+  /** Wilder RSI. 14 is the scanner's; 2 is the Connors short-term reversal. */
+  rsi_14: number | null;
+  rsi_2: number | null;
+  sma_20: number | null;
+  sma_50: number | null;
+  sma_200: number | null;
+  ema_9: number | null;
+  ema_21: number | null;
+  /** MACD 12/26/9. */
+  macd_line: number | null;
+  macd_signal: number | null;
+  macd_hist: number | null;
+  /** Average true range, absolute and as a % of close (cross-price comparable). */
+  atr_14: number | null;
+  atr_pct: number | null;
+  /** Annualized close-to-close historical volatility — the IV-vs-HV input. */
+  hv_20: number | null;
+  hv_30: number | null;
+  /** Bollinger (20, 2σ): position in the channel, and channel width. */
+  bb_percent_b: number | null;
+  bb_bandwidth: number | null;
+  /** 20-day average volume, in shares and in dollars (the tradeability floor). */
+  adv_20_shares: number | null;
+  adv_20_dollar: number | null;
+  high_52w: number | null;
+  low_52w: number | null;
+  pct_from_52w_high: number | null;
+  /** Bars available in the compute window — lets a reader reject thin rows. */
+  bars_in_window: number;
+  /** Window held an unexplained >35% day (likely an unrecorded split); excluded by default. */
+  suspect: Generated<boolean>;
+  computed_at: Generated<Date>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // IPO Feed (ipo-feed.prd.md, E1) — Massive /vX/reference/ipos IPO events.
 // STANDALONE event table, NOT security_key-keyed: rumor/pending/upcoming IPOs
 // have no security_reference row yet. PK = ipo_key = COALESCE(us_code, isin,
@@ -937,6 +993,7 @@ export interface Database {
   security_reference: SecurityReferenceTable;
   security_related_companies: SecurityRelatedCompaniesTable;
   security_transitions: SecurityTransitionsTable;
+  security_daily_indicators: SecurityDailyIndicatorsTable;
   security_short_interest: SecurityShortInterestTable;
   security_short_volume: SecurityShortVolumeTable;
   ipo_events: IpoEventsTable;
