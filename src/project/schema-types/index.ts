@@ -532,6 +532,12 @@ export interface SecurityDailyIndicatorsTable {
   volume: number | null;
   /** Wilder RSI. 14 is the scanner's; 2 is the Connors short-term reversal. */
   rsi_14: number | null;
+  /**
+   * Wilder averages behind `rsi_14`, so an intraday provisional RSI can continue the SAME
+   * smoothing chain rather than reseeding from a short window (E9). Null before convergence.
+   */
+  rsi_avg_gain_14: number | null;
+  rsi_avg_loss_14: number | null;
   rsi_2: number | null;
   sma_20: number | null;
   sma_50: number | null;
