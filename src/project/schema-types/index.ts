@@ -399,6 +399,23 @@ export interface SecurityReferenceTable {
   free_float_percent: number | null;
   /** Massive effective_date of the free-float measurement (reporting-lagged). */
   float_effective_date: Date | null;
+  /**
+   * Optionability + option activity, derived nightly from the OPRA day-agg stream the
+   * options-prices handler already reads (daily-indicators-scanner PRD E6/D17).
+   *
+   * NULL ≠ false. NULL means "no OPRA session observed for this security yet";
+   * `optionable = false` means "a session was observed and it listed no contracts". A screen
+   * for genuinely optionable names must test `optionable IS TRUE`.
+   *
+   * Sole writer is `SecurityReferenceTrustedApi.updateOptionActivity` — deliberately outside
+   * `#toRow` / `upsertSecurityReference` so a reference refresh cannot null them, exactly as
+   * the free-float columns above.
+   */
+  optionable: boolean | null;
+  option_contracts: number | null;
+  option_volume: string | number | null;
+  /** Closing date of the OPRA session these counts came from. */
+  options_as_of: Date | null;
   round_lot: number | null;
   ceo: string | null;
   fiscal_year_end: string | null;
