@@ -538,6 +538,14 @@ export interface SecurityDailyIndicatorsTable {
    */
   rsi_avg_gain_14: number | null;
   rsi_avg_loss_14: number | null;
+  /**
+   * The security's PREVIOUS AVAILABLE close and the move to it as a percent. Written by the
+   * compute, which walks the security's own bar sequence — deliberately not derived with a
+   * `lag()` at read time, which would pair a halted or newly listed name against a session
+   * it never traded in. Null on a security's first bar.
+   */
+  prev_close: number | null;
+  change_pct: number | null;
   rsi_2: number | null;
   sma_20: number | null;
   sma_50: number | null;
