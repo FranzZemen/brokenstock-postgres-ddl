@@ -571,6 +571,65 @@ export interface SecurityDailyIndicatorsTable {
   high_52w: number | null;
   low_52w: number | null;
   pct_from_52w_high: number | null;
+  /**
+   * SMA 18 — the trader's fast/slow pair is EMA 9 / SMA 18, and the 20 above is a different
+   * line that would put the crossover on different bars (indicator-curve-signals E2, D11).
+   */
+  sma_18: number | null;
+  /*
+   * CURVE GEOMETRY (indicator-curve-signals.prd.md, E2). `*_slope`/`*_curvature` are
+   * normalized to the line's own recent movement, so a threshold means the same thing on
+   * price, MACD and RSI. `*_state` is that direction after debouncing (-1 falling/curling
+   * down, 0 flat/straight, 1 rising/curling up) and is what a filter should read — a raw
+   * sign flips constantly on a noisy line. All null through warmup, on a line too flat to
+   * have a scale, and on `suspect` rows.
+   */
+  rsi_14_slope: number | null;
+  rsi_14_slope_state: number | null;
+  rsi_14_curvature: number | null;
+  rsi_14_curvature_state: number | null;
+  macd_line_slope: number | null;
+  macd_line_slope_state: number | null;
+  macd_line_curvature: number | null;
+  macd_line_curvature_state: number | null;
+  /** Close carries slope only — a short parabola on raw price is near-random (D6). */
+  close_slope: number | null;
+  close_slope_state: number | null;
+  /*
+   * CROSSOVERS. `*_dir` is 1 up / -1 down; `*_slope_gap` is how sharply the lines were
+   * separating AT the cross bar and is never re-measured; `*_both_agree` is whether both
+   * lines were already sloping that way; `*_state` is 'provisional' | 'held' | 'failed'.
+   *
+   * `bars_since` is CENSORED at the nightly window and null beyond it, so the nightly job
+   * and a full-history backfill cannot write different numbers into the same row (D13).
+   * Null therefore means either "no cross in the window" or "longer ago than we count".
+   *
+   * There is deliberately no rolled-up strength score (D8): the pieces are the product.
+   */
+  ema_9_sma_18_cross_dir: number | null;
+  ema_9_sma_18_bars_since_cross: number | null;
+  ema_9_sma_18_cross_slope_gap: number | null;
+  ema_9_sma_18_cross_both_agree: boolean | null;
+  ema_9_sma_18_cross_state: string | null;
+  macd_cross_dir: number | null;
+  macd_cross_bars_since: number | null;
+  macd_cross_slope_gap: number | null;
+  macd_cross_both_agree: boolean | null;
+  macd_cross_state: string | null;
+  /*
+   * TREND CONTEXT (D24). A fast/slow up-cross below a falling 200-day average is a different
+   * trade from the same cross above a rising 50-day one, so the surrounding trend rides on
+   * the same row rather than requiring a second pass. `close_vs_*` and `macd_zero_side` are
+   * 1 above / -1 below; `ema_9_sma_18_spread` is normalized so it compares across price
+   * levels; `volume_vs_adv_20` is session volume over the 20-day average.
+   */
+  close_vs_sma_50: number | null;
+  close_vs_sma_200: number | null;
+  sma_50_slope_state: number | null;
+  sma_200_slope_state: number | null;
+  macd_zero_side: number | null;
+  ema_9_sma_18_spread: number | null;
+  volume_vs_adv_20: number | null;
   /** Bars available in the compute window — lets a reader reject thin rows. */
   bars_in_window: number;
   /** Window held an unexplained >35% day (likely an unrecorded split); excluded by default. */
