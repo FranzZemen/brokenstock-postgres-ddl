@@ -40,7 +40,7 @@
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.1.2",
-    "@types/pg": "^8.20.0",
+    "@types/pg": "^8.20.3",
     "chai": "^6.2.2",
     "kysely": "^0.29.4",
     "mocha": "^11.7.6",
