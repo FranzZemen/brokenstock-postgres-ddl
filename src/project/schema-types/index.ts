@@ -1659,6 +1659,11 @@ export interface BrokerageAccountsTable {
   start_at: Date | null;
   /** Virtual-only irreversible close: import feed stops, valuation continues. */
   closed_at: Date | null;
+  /** Open per-account settings bag (manual-transactions-charges-and-chart D7).
+   *  First key: `chargeSchedule`. NULL = no settings = no charges. Shape is
+   *  validated by financial-identity's accountSettingsSchema, deliberately
+   *  non-strict, so no CHECK constraint guards it here. */
+  settings: unknown | null;          // JSONB AccountSettings
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   created_by: string;
