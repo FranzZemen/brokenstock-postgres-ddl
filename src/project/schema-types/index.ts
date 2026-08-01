@@ -522,6 +522,43 @@ export interface SecurityShortVolumeTable {
 // sma_200 200, high_52w 252); `bars_in_window` says how much history backed the row.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// security_implied_volatility — one at-the-money implied-volatility sample per
+// optionable underlying per session (reference-options-chart.prd.md D19/E12).
+//
+// This is the ONLY volatility history the product can ever hold: per-contract
+// implied volatility is unobtainable historically (the flat file has none, the
+// historical-quote path hardcodes it to 0, and greeks are snapshot-only), so it
+// can only be captured going forward, per underlying. It is what lets a falling
+// premium be attributed to decay rather than to a volatility collapse.
+// ---------------------------------------------------------------------------
+
+export interface SecurityImpliedVolatilityTable {
+  /** securities.key FK CASCADE. Leading PK column. */
+  security_key: string;
+  /** Trading session sampled. */
+  closing_date: Date;
+  /**
+   * At-the-money implied volatility as a decimal (0.24 = 24%).
+   *
+   * NULL means we sampled and the vendor had nothing usable — NOT that
+   * volatility was zero. Percentile arithmetic MUST exclude NULLs; treating one
+   * as zero makes it the lowest possible reading and drags every rank below it.
+   */
+  atm_iv: number | null;
+  /** Expiration the sampled contract came from. Term structure makes a 7-day
+   *  sample and a 45-day sample incomparable, so this is not decoration. */
+  expiration_date: Date | null;
+  /** Days to that expiration at capture. */
+  days_to_expiry: number | null;
+  /** Underlying price at capture, so the at-the-money pick can be audited. */
+  underlying_price: number | null;
+  created_at: Date;
+  updated_at: Date;
+  created_by: string;
+  updated_by: string;
+}
+
 export interface SecurityDailyIndicatorsTable {
   /** Trading session the indicators describe. Leading PK column. */
   closing_date: Date;
@@ -1084,6 +1121,7 @@ export interface Database {
   security_related_companies: SecurityRelatedCompaniesTable;
   security_transitions: SecurityTransitionsTable;
   security_daily_indicators: SecurityDailyIndicatorsTable;
+  security_implied_volatility: SecurityImpliedVolatilityTable;
   security_short_interest: SecurityShortInterestTable;
   security_short_volume: SecurityShortVolumeTable;
   ipo_events: IpoEventsTable;
