@@ -53,7 +53,7 @@ const FEED_TYPES_BEFORE = [
   'equity-prices-plan', 'options-prices-plan', 'price-rebase-sweep',
   'security-float-refresh',
   'security-short-interest', 'security-short-volume', 'security-short-volume-plan',
-  'ipo-refresh', 'daily-indicators',
+  'ipo-refresh', 'daily-indicators', 'price-discontinuity-audit',
 ];
 const FEED_TYPES_AFTER = [...FEED_TYPES_BEFORE, IV_SNAPSHOT];
 
