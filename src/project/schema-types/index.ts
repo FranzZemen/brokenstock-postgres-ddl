@@ -539,18 +539,37 @@ export interface SecurityImpliedVolatilityTable {
   /** Trading session sampled. */
   closing_date: Date;
   /**
-   * At-the-money implied volatility as a decimal (0.24 = 24%).
+   * At-the-money implied volatility as a decimal (0.24 = 24%), normalized to
+   * `target_days` by interpolating between the two bracketing expirations.
+   *
+   * Constant maturity is not a refinement — sampling whichever expiration is
+   * nearest makes the value JUMP whenever that expiration rolls, and the jump
+   * enters the history as though volatility had changed. Ranking against that
+   * would be ranking against a sawtooth we manufactured.
    *
    * NULL means we sampled and the vendor had nothing usable — NOT that
    * volatility was zero. Percentile arithmetic MUST exclude NULLs; treating one
    * as zero makes it the lowest possible reading and drags every rank below it.
    */
   atm_iv: number | null;
-  /** Expiration the sampled contract came from. Term structure makes a 7-day
-   *  sample and a 45-day sample incomparable, so this is not decoration. */
-  expiration_date: Date | null;
-  /** Days to that expiration at capture. */
-  days_to_expiry: number | null;
+  /**
+   * Maturity `atm_iv` is normalized to, in days. Stored rather than assumed so a
+   * later change to the target is visible in the data instead of silently mixing
+   * two different measurements into one series.
+   */
+  target_days: number;
+  /** Near leg: the expiration below the target, and its own implied volatility. */
+  near_expiration_date: Date | null;
+  near_days_to_expiry: number | null;
+  near_iv: number | null;
+  /**
+   * Far leg: the expiration above the target. NULL when only one usable
+   * expiration existed — in which case `atm_iv` is the near leg unblended and is
+   * NOT constant-maturity. A real reading, but a reader must be able to tell.
+   */
+  far_expiration_date: Date | null;
+  far_days_to_expiry: number | null;
+  far_iv: number | null;
   /** Underlying price at capture, so the at-the-money pick can be audited. */
   underlying_price: number | null;
   created_at: Date;
