@@ -26,6 +26,19 @@ times independently. It is now defined exactly ONCE, here.
 the SQL.** The predicate is not optional and it is not obvious; that is precisely why it
 keeps getting dropped.
 
+  - 2026-08-02: `unscheduleVendorSyncCron` had a THIRD instance of the same class of bug,
+    and it had never worked. It guarded on
+    `current_database() = (SELECT setting FROM pg_settings WHERE name = 'cron.database_name')`,
+    but that setting reads NULL for a non-superuser role — and `anything = NULL` is NULL,
+    never TRUE, so the guard was never satisfied and the unschedule silently did nothing.
+    The migration still reported success. The schedule helper survived because its mirror
+    guard is `<>`, which is also never TRUE and therefore falls through to its ELSE branch
+    and schedules. Asymmetric, which is why it went unnoticed: scheduling worked, every
+    `down` quietly no-opped. The guard is now dropped entirely — filtering by `jobname`
+    already makes the unschedule a no-op when the row is not there, and on a database where
+    pg_cron holds no jobs the DELETE simply matches nothing. Nothing was gained by asking
+    which database the scheduler lives in.
+
 This module deliberately lives OUTSIDE `migrations/`: node-pg-migrate loads every .js file
 in that directory as a migration, so a helper placed there would be executed as one.
 */
@@ -99,8 +112,7 @@ export const unscheduleVendorSyncCron = (pgm: MigrationBuilder, feed: string): v
   pgm.sql(`
     DO $do$
     BEGIN
-      IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
-         AND current_database() = (SELECT setting FROM pg_settings WHERE name = 'cron.database_name') THEN
+      IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
         EXECUTE 'SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = ''${name}''';
       END IF;
     END
