@@ -1179,12 +1179,6 @@ export interface Database {
   transfer_events: TransferEventsTable;
   transfer_event_lots: TransferEventLotsTable;
   thesis: ThesisTable;
-  subscription_plans: SubscriptionPlansTable;
-  subscription_features: SubscriptionFeaturesTable;
-  plan_versions: PlanVersionsTable;
-  plan_version_features: PlanVersionFeaturesTable;
-  user_subscriptions: UserSubscriptionsTable;
-  feature_usage: FeatureUsageTable;
   // Era 4 / 4a — yield persistence (trade-yield-persistence DDB→PG).
   trade_yield_segments: TradeYieldSegmentsTable;
   trade_yield_segment_transaction_portions: TradeYieldSegmentTransactionPortionsTable;
@@ -2109,103 +2103,19 @@ export interface TransferEventLotsTable {
 }
 
 // ---------------------------------------------------------------------------
-// Era 3.5 — Billing / Subscriptions (subscription-plans + user-subscriptions
-// DDB→PG). Natural keys; planVersionId `${slug}#${ver}` → (plan_slug,
-// version_number) composite; PlanVersionFeature.value (bool|number) → two
-// nullable typed cols (XOR CHECK); epoch → timestamptz; user_uuid soft pointer.
-// See doc/prd/era-3.5-billing-subscriptions.prd.md.
+// Era 3.5 — Billing / Subscriptions: REMOVED 2026-08-03.
+//
+// This block declared six tables — subscription_plans, subscription_features,
+// plan_versions, plan_version_features, user_subscriptions, feature_usage — created
+// by 2026-06-07T130000Z_era_3_5_subscriptions.ts when subscription-plans and
+// user-subscriptions moved off DynamoDB.
+//
+// The tables were DROPPED by 2026-08-03T120000Z_drop_subscription_tables.ts
+// (commercial-surface-decommission.prd.md E22): BrokenStock is not being
+// commercialised. The types go with them, because a Kysely `Database` interface that
+// still lists a dropped table is a live hazard — every query against it type-checks
+// and then fails at runtime, which is the wrong order to find out.
 // ---------------------------------------------------------------------------
-
-/** Subscription plan catalog row (global, admin-managed). */
-export interface SubscriptionPlansTable {
-  /** Branded PlanSlug (lowercase-kebab). */
-  plan_slug: string;
-  name: string;
-  description: string | null;
-  default_price_in_cents: number;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-/** Feature catalog row (global). type discriminates boolean vs quantity. */
-export interface SubscriptionFeaturesTable {
-  feature_slug: string;
-  name: string;
-  description: string | null;
-  /** 'boolean' | 'quantity'. */
-  type: string;
-  /** Default quota for quantity features. */
-  default_limit: number | null;
-  active: Generated<boolean>;
-  hidden: Generated<boolean>;
-  ordinal_position: number | null;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-/** Plan version (draft → active → archived). created_at doubles as PlanVersion.createdAt. */
-export interface PlanVersionsTable {
-  plan_slug: string;
-  version_number: number;
-  /** 'draft' | 'active' | 'archived'. */
-  status: string;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-/** Entitlement: a feature on a plan version. value_bool XOR value_number (BS-5). */
-export interface PlanVersionFeaturesTable {
-  plan_slug: string;
-  version_number: number;
-  feature_slug: string;
-  /** Set iff the feature is type 'boolean'. */
-  value_bool: boolean | null;
-  /** Set iff the feature is type 'quantity' (NUMERIC → string on read). */
-  value_number: string | null;
-  /** Reset cadence for quantity features. */
-  reset_period: string | null;
-  /** Arbitrary per-plan customization (e.g. {theme:'dark'}). */
-  variant_data: unknown | null;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-/** A user's subscription to a plan version. */
-export interface UserSubscriptionsTable {
-  /** Branded `<uuid>.user` (soft pointer, no FK to users). */
-  user_uuid: string;
-  plan_slug: string;
-  version_number: number;
-  /** 'active' | 'trialing' | 'expired'. */
-  status: string;
-  auto_upgrade: Generated<boolean>;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
-
-/** Metered usage counter (quantity features only). reset_date index replaces the DDB resetPartition GSI. */
-export interface FeatureUsageTable {
-  user_uuid: string;
-  feature_slug: string;
-  current_count: Generated<number>;
-  reset_date: Date;
-  /** TimeUnit. */
-  reset_period: string;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: Generated<Date>;
-  updated_at: Generated<Date>;
-}
 
 // ===========================================================================
 // Era 4 / 4a — yield persistence (trade-yield-persistence DDB→PG)
