@@ -615,6 +615,46 @@ export interface SecurityImpliedVolatilityTable {
   far_iv: number | null;
   /** Underlying price at capture, so the at-the-money pick can be audited. */
   underlying_price: number | null;
+  /**
+   * The VENDOR's blended figure for the same sample, kept as a permanent
+   * accuracy check on our own arithmetic — not as the product.
+   *
+   * It is the only answer key this system will ever have: the vendor publishes
+   * implied volatility for the current moment only and returns 0 for any past
+   * date, so today's chain is the one place our maths can be checked against
+   * someone else's. Storing both every night makes drift visible on the night
+   * it starts, which no self-consistent test can do.
+   */
+  vendor_atm_iv: number | null;
+  /**
+   * PERCENT (3.78 = 3.78%), matching `economy_treasury_yields` — one unit for
+   * one quantity across the database, because two is how a hundredfold error
+   * gets in. Stored because the rate table is rewritten in full on every feed
+   * run, so without it a past reading cannot be reproduced.
+   */
+  risk_free_rate_pct: number | null;
+  /**
+   * The date the rate was published for, which is NOT always `closing_date`:
+   * yields publish on trading days only, so a holiday resolves to the nearest
+   * earlier date.
+   */
+  rate_observation_date: Date | null;
+  /**
+   * True when a dividend ex-date fell before expiry. It selects the MODEL — a
+   * binomial tree rather than the closed form — so two consecutive months for
+   * one security can be priced differently. This column is what makes that
+   * visible instead of looking like a volatility move.
+   */
+  had_dividend_in_window: boolean | null;
+  /**
+   * Who computed `atm_iv`: `'computed'` = ours, `'vendor'` = read from the
+   * snapshot. Rows captured before the switch are `'vendor'`.
+   *
+   * Mixing the two within one rank measures the gap between two calculations as
+   * much as it measures volatility, which is the whole reason the switch was
+   * made rather than backfilling against the vendor's live number.
+   */
+  iv_source: Generated<string>;
   created_at: Date;
   updated_at: Date;
   created_by: string;
