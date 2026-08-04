@@ -627,6 +627,22 @@ export interface SecurityImpliedVolatilityTable {
    */
   vendor_atm_iv: number | null;
   /**
+   * Implied volatility at the BID and at the ASK — how tightly the quote pins
+   * the reading, measured in the same units as the reading itself.
+   *
+   * The honest alternative to a spread threshold: the same spread in cents pins
+   * volatility tightly on one contract and not at all on another, depending on
+   * how sensitive its price is to volatility. Liquid names sit a fraction of a
+   * point apart; a thin fund measured on 2026-08-04 spanned roughly 15% to 80%,
+   * where no single reading is defensible.
+   *
+   * A NULL low end is not missing data — it means the bid implies no volatility
+   * at all (at or below intrinsic), i.e. unbounded below, which is a STRONGER
+   * statement of unreliability than any number.
+   */
+  atm_iv_at_bid: number | null;
+  atm_iv_at_ask: number | null;
+  /**
    * PERCENT (3.78 = 3.78%), matching `economy_treasury_yields` — one unit for
    * one quantity across the database, because two is how a hundredfold error
    * gets in. Stored because the rate table is rewritten in full on every feed
