@@ -643,6 +643,22 @@ export interface SecurityImpliedVolatilityTable {
   atm_iv_at_bid: number | null;
   atm_iv_at_ask: number | null;
   /**
+   * Trades behind the close that was inverted — the reliability signal for
+   * BACKFILLED readings, standing in for the bid-ask spread the daily flat file
+   * does not carry.
+   *
+   * NULL on nightly rows (they use the bid/ask band instead). NULL from the
+   * backfill means the vendor did not report it, which is NOT evidence that the
+   * contract traded a lot — readers must treat unknown as unreliable.
+   */
+  atm_transactions: number | null;
+  /**
+   * How far the chosen strike sat from spot, as a fraction of spot. A flat file
+   * holds only contracts that TRADED, so on a quiet session the nearest traded
+   * strike can be well away from the money.
+   */
+  atm_moneyness_distance: number | null;
+  /**
    * PERCENT (3.78 = 3.78%), matching `economy_treasury_yields` — one unit for
    * one quantity across the database, because two is how a hundredfold error
    * gets in. Stored because the rate table is rewritten in full on every feed
