@@ -523,6 +523,49 @@ export interface SecurityShortVolumeTable {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// economy_treasury_yields — US Treasury constant-maturity yields by observation
+// date (economy-indicators.prd.md E1, Massive /fed/v1/treasury-yields).
+//
+// The observation date IS the identity: macro data belongs to no security and to
+// no user, so there is no security_key and no owner scope.
+//
+// ALL VALUES ARE PERCENT, NOT FRACTIONS — 3.78 means 3.78%. Option pricing wants
+// 0.0378 and divides at the point of use. The table matches the vendor byte for
+// byte on purpose, so a suspicious number can be checked against the source.
+//
+// Every maturity is nullable: the vendor OMITS what it has no value for, and the
+// short end has not always existed (yield_1_month begins 2001-07-31, on 6,252 of
+// 16,130 rows). The four maturities Massive documents but has never been observed
+// to send — 6-month, 3-year, 7-year, 20-year — are deliberately absent.
+//
+// Rewritten in full on every feed run, so a missing date means the vendor never
+// published one, never that a run was missed.
+// ---------------------------------------------------------------------------
+
+export interface EconomyTreasuryYieldsTable {
+  /** Observation date. Sole primary key. */
+  observation_date: Date;
+  /** Percent. The risk-free rate for 30-day option pricing. NULL before 2001-07-31. */
+  yield_1_month: number | null;
+  /** Percent. The shortest maturity available before 2001-07-31. */
+  yield_3_month: number | null;
+  /** Percent. */
+  yield_1_year: number | null;
+  /** Percent. */
+  yield_2_year: number | null;
+  /** Percent. */
+  yield_5_year: number | null;
+  /** Percent. */
+  yield_10_year: number | null;
+  /** Percent. */
+  yield_30_year: number | null;
+  created_at: Date;
+  updated_at: Date;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // security_implied_volatility — one at-the-money implied-volatility sample per
 // optionable underlying per session (reference-options-chart.prd.md D19/E12).
 //
@@ -1141,6 +1184,7 @@ export interface Database {
   security_transitions: SecurityTransitionsTable;
   security_daily_indicators: SecurityDailyIndicatorsTable;
   security_implied_volatility: SecurityImpliedVolatilityTable;
+  economy_treasury_yields: EconomyTreasuryYieldsTable;
   security_short_interest: SecurityShortInterestTable;
   security_short_volume: SecurityShortVolumeTable;
   ipo_events: IpoEventsTable;
