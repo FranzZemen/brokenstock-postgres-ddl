@@ -687,6 +687,37 @@ export interface SecurityImpliedVolatilityTable {
    * made rather than backfilling against the vendor's live number.
    */
   iv_source: Generated<string>;
+  /**
+   * Where `atm_iv` sits between the trailing window's low and high, 0-100, AS OF
+   * `closing_date` — the number the volatility scanner sorts on
+   * (projects/doc/prd/volatility-scanner.prd.md D10).
+   *
+   * Stored rather than computed per scan because a scan covers ~4,580 securities
+   * against a year of readings each, on a 15-second poll. It does NOT drift as
+   * later sessions arrive; re-running the session recomputes it.
+   *
+   * NULL = no usable window. Never 0 for absence — 0 is a real statement (the
+   * bottom of the range), the same distinction `atm_iv` makes.
+   */
+  iv_rank: number | null;
+  /**
+   * Share of the trailing window at or below `atm_iv`, 0-100.
+   *
+   * Diverges from `iv_rank` whenever the distribution is lopsided: a security
+   * that sat near its low all year and spiked once scores high on both, while
+   * one that drifted up steadily scores high on rank and middling on percentile.
+   * Both are stored so neither the chart nor the scanner has to choose.
+   */
+  iv_percentile: number | null;
+  /**
+   * How many readings the window actually held.
+   *
+   * Without it a rank cannot be told apart from one computed on eleven readings.
+   * The count is stored rather than a `provisional` boolean because the
+   * threshold (`MIN_CONFIDENT_SAMPLES`, 60) is a display judgement and belongs
+   * in code with the other two.
+   */
+  iv_rank_samples: number | null;
   created_at: Date;
   updated_at: Date;
   created_by: string;
