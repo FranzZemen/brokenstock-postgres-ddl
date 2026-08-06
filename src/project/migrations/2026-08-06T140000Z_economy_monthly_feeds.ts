@@ -107,6 +107,11 @@ const FEED_TYPES_BEFORE = [
   'security-short-interest', 'security-short-volume', 'security-short-volume-plan',
   'ipo-refresh', 'daily-indicators', 'price-discontinuity-audit',
   'security-iv-snapshot', 'economy-treasury-yields', 'security-iv-backfill',
+  // Added 2026-08-05 by the IV backfill planner cron. It was MISSED on the first
+  // draft of this list — see `2026-08-06T150000Z_feed_type_check_repair_plan.ts`
+  // and the warning in `2026-08-01T223000Z_feed_type_check_repair.ts`, which
+  // documents this exact failure five days before it recurred.
+  'security-iv-backfill-plan',
 ];
 const FEED_TYPES_AFTER = [...FEED_TYPES_BEFORE, INFLATION, EXPECTATIONS, LABOR];
 
