@@ -566,6 +566,89 @@ export interface EconomyTreasuryYieldsTable {
 }
 
 // ---------------------------------------------------------------------------
+// The three monthly economy tables (economy-indicators.prd.md E3-E5, Massive
+// /fed/v1/{inflation,inflation-expectations,labor-market}).
+//
+// Same shape as economy_treasury_yields: the observation date is the sole
+// identity, there is no security key and no owner scope, and every run rewrites
+// all of history — so a missing month is a month the vendor never published,
+// never a run that was skipped.
+//
+// THE UNITS ARE NOT UNIFORM AND TWO OF THESE MIX UNITS WITHIN A ROW. Every
+// column below states its own, because there is no single sentence that covers
+// the set. Measured against the live vendor 2026-08-06.
+//
+// A NULL means NOT PUBLISHED, never zero. job_openings is the live case — it
+// comes from a survey that publishes later than its siblings, so the newest
+// labor row lacks it for part of every month.
+// ---------------------------------------------------------------------------
+
+export interface EconomyInflationTable {
+  /** The month described, stamped on the first. Sole primary key. */
+  observation_date: Date;
+  /** INDEX LEVEL, 1982-84 = 100. NOT a percent. June 2026 read 332.568. */
+  cpi: number | null;
+  /** INDEX LEVEL, 1982-84 = 100, excluding food and energy. */
+  cpi_core: number | null;
+  /** INDEX LEVEL, 2017 = 100. A DIFFERENT base from `cpi` — not comparable with it. */
+  pce: number | null;
+  /** INDEX LEVEL, 2017 = 100, excluding food and energy. */
+  pce_core: number | null;
+  /** BILLIONS OF DOLLARS, annualised. 22184.1 = $22.18tn. */
+  pce_spending: number | null;
+  created_at: Date;
+  updated_at: Date;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface EconomyInflationExpectationsTable {
+  /** The month described, stamped on the first. Sole primary key. */
+  observation_date: Date;
+  /** PERCENT. Market-implied, 5-year horizon. */
+  market_5_year: number | null;
+  /** PERCENT. Market-implied, 10-year horizon. */
+  market_10_year: number | null;
+  /** PERCENT. The five years BEGINNING five years from now — not the next ten. */
+  forward_years_5_to_10: number | null;
+  /** PERCENT. Cleveland Fed model, 1-year horizon. */
+  model_1_year: number | null;
+  /** PERCENT. Cleveland Fed model, 5-year horizon. */
+  model_5_year: number | null;
+  /** PERCENT. Cleveland Fed model, 10-year horizon. */
+  model_10_year: number | null;
+  /** PERCENT. Cleveland Fed model, 30-year horizon. */
+  model_30_year: number | null;
+  created_at: Date;
+  updated_at: Date;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface EconomyLaborMarketTable {
+  /** The month described, stamped on the first. Sole primary key. */
+  observation_date: Date;
+  /** PERCENT. */
+  unemployment_rate: number | null;
+  /** PERCENT. Share of the working-age population in the labour force. */
+  labor_force_participation_rate: number | null;
+  /** DOLLARS PER HOUR, nominal — not adjusted for inflation. */
+  avg_hourly_earnings: number | null;
+  /**
+   * THOUSANDS OF OPENINGS. 7359 means 7.36 million.
+   *
+   * NULL on the newest row for part of every month: it publishes on a later
+   * schedule than its siblings. NULL means not yet published; zero would say the
+   * economy stopped hiring.
+   */
+  job_openings: number | null;
+  created_at: Date;
+  updated_at: Date;
+  created_by: string;
+  updated_by: string;
+}
+
+// ---------------------------------------------------------------------------
 // security_implied_volatility — one at-the-money implied-volatility sample per
 // optionable underlying per session (reference-options-chart.prd.md D19/E12).
 //
@@ -1288,6 +1371,9 @@ export interface Database {
   security_daily_indicators: SecurityDailyIndicatorsTable;
   security_implied_volatility: SecurityImpliedVolatilityTable;
   economy_treasury_yields: EconomyTreasuryYieldsTable;
+  economy_inflation: EconomyInflationTable;
+  economy_inflation_expectations: EconomyInflationExpectationsTable;
+  economy_labor_market: EconomyLaborMarketTable;
   security_short_interest: SecurityShortInterestTable;
   security_short_volume: SecurityShortVolumeTable;
   ipo_events: IpoEventsTable;
